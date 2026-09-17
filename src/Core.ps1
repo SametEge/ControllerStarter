@@ -300,11 +300,62 @@ function New-GamepadIcon {
     return $clone
 }
 
+function ConvertTo-IconDib {
+    <#
+        Encodes a bitmap as an ICO directory entry in classic DIB form: a
+        BITMAPINFOHEADER whose height covers both the colour and mask planes,
+        32bpp BGRA rows stored bottom-up, then an all-zero AND mask (the alpha
+        channel already carries transparency).
+    #>
+    param([Parameter(Mandatory)][System.Drawing.Bitmap]$Bitmap)
+
+    $width  = $Bitmap.Width
+    $height = $Bitmap.Height
+
+    $rect = New-Object System.Drawing.Rectangle(0, 0, $width, $height)
+    $data = $Bitmap.LockBits($rect,
+                [System.Drawing.Imaging.ImageLockMode]::ReadOnly,
+                [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $stride = $data.Stride
+    $pixels = New-Object byte[] ($stride * $height)
+    [System.Runtime.InteropServices.Marshal]::Copy($data.Scan0, $pixels, 0, $pixels.Length)
+    $Bitmap.UnlockBits($data)
+
+    $stream = New-Object System.IO.MemoryStream
+    $writer = New-Object System.IO.BinaryWriter($stream)
+
+    $writer.Write([uint32]40)                   # biSize
+    $writer.Write([int32]$width)                # biWidth
+    $writer.Write([int32]($height * 2))         # biHeight: colour plane + mask
+    $writer.Write([uint16]1)                    # biPlanes
+    $writer.Write([uint16]32)                   # biBitCount
+    $writer.Write([uint32]0)                    # biCompression: BI_RGB
+    $writer.Write([uint32]($width * $height * 4))
+    $writer.Write([int32]0)                     # biXPelsPerMeter
+    $writer.Write([int32]0)                     # biYPelsPerMeter
+    $writer.Write([uint32]0)                    # biClrUsed
+    $writer.Write([uint32]0)                    # biClrImportant
+
+    for ($y = $height - 1; $y -ge 0; $y--) {
+        $writer.Write($pixels, $y * $stride, $width * 4)
+    }
+
+    $maskStride = [Math]::Floor(($width + 31) / 32) * 4
+    $writer.Write((New-Object byte[] ($maskStride * $height)))
+
+    $writer.Flush()
+    $bytes = $stream.ToArray()
+    $writer.Dispose()
+    $stream.Dispose()
+
+    return , $bytes
+}
+
 function Save-GamepadIcoFile {
     <#
-        Writes a multi-resolution .ico (PNG-compressed entries, Vista and
-        later) so the compiled launcher gets a crisp icon at every size
-        Explorer asks for.
+        Writes a multi-resolution .ico. Sizes up to 128 px are stored as DIBs,
+        which every Windows surface can read; only the 256 px entry is PNG
+        compressed, which is the convention Vista and later expect.
     #>
     param(
         [Parameter(Mandatory)][string]$Path,
@@ -316,10 +367,17 @@ function Save-GamepadIcoFile {
 
     foreach ($size in $sizes) {
         $bitmap = New-GamepadBitmap -Size $size -Color $Color
-        $stream = New-Object System.IO.MemoryStream
-        $bitmap.Save($stream, [System.Drawing.Imaging.ImageFormat]::Png)
-        $payload += , $stream.ToArray()
-        $stream.Dispose()
+
+        if ($size -ge 256) {
+            $stream = New-Object System.IO.MemoryStream
+            $bitmap.Save($stream, [System.Drawing.Imaging.ImageFormat]::Png)
+            $payload += , $stream.ToArray()
+            $stream.Dispose()
+        }
+        else {
+            $payload += , (ConvertTo-IconDib -Bitmap $bitmap)
+        }
+
         $bitmap.Dispose()
     }
 
