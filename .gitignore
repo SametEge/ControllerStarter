@@ -1,0 +1,17 @@
+# Runtime output
+logs/
+*.log
+*.log.1
+
+# Local overrides (copy config.json and edit if you prefer keeping yours private)
+config.local.json
+
+# Windows
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# Editors
+.vscode/
+.idea/
+*.swp

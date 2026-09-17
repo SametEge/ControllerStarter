@@ -1,0 +1,22 @@
+{
+  "steamExePath": "",
+  "steamLaunchArgs": ["-bigpicture"],
+
+  "pollIntervalSeconds": 2,
+  "connectDebounceSeconds": 2,
+  "disconnectGraceSeconds": 20,
+  "launchIfControllerAlreadyConnectedAtStartup": false,
+
+  "closeGamesOnDisconnect": true,
+  "closeSteamOnDisconnect": true,
+  "closeSteamOnlyIfLaunchedByThisTool": false,
+
+  "gracefulCloseTimeoutSeconds": 15,
+  "steamShutdownTimeoutSeconds": 30,
+
+  "extraGameProcessNames": [],
+  "ignoreProcessNames": ["steam", "steamwebhelper", "steamerrorreporter", "gameoverlayui"],
+
+  "logEnabled": true,
+  "logMaxSizeKB": 1024
+}
