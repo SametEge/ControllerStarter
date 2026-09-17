@@ -1,0 +1,78 @@
+# Builds ControllerStarterSetup.exe from source on a clean runner.
+#
+# Every artifact published for this project comes from this workflow, so the
+# binary on the Releases page can be traced back to the commit it was built
+# from. That traceability is also what the SignPath Foundation verifies before
+# signing: the signing step slots in between "build" and "release" once the
+# project is enrolled.
+#
+# Author : Samet Ege
+# License: MIT
+
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build installer
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Build the launcher and installer
+        shell: powershell
+        run: .\build\Build-Setup.ps1
+
+      - name: Verify the build output
+        shell: powershell
+        run: |
+          $setup = 'ControllerStarterSetup.exe'
+          if (-not (Test-Path $setup)) { throw "Installer was not produced." }
+
+          $info = (Get-Item $setup).VersionInfo
+          $size = [Math]::Round((Get-Item $setup).Length / 1KB, 1)
+          Write-Host "Installer : $setup ($size KB)"
+          Write-Host "Product   : $($info.ProductName)"
+          Write-Host "Company   : $($info.CompanyName)"
+          Write-Host "Version   : $($info.FileVersion)"
+
+          # The payload is what actually gets installed; a truncated or empty
+          # one would still produce a valid-looking executable.
+          $bytes = [System.IO.File]::ReadAllBytes($setup)
+          $text  = [System.Text.Encoding]::ASCII.GetString($bytes)
+          foreach ($entry in @('ControllerStarterApp.ps1', 'Core.ps1', 'ControllerStarter.exe', 'config.json', 'LICENSE')) {
+            if (-not $text.Contains($entry)) { throw "Payload is missing $entry." }
+          }
+          Write-Host 'Payload   : all expected files present'
+
+      - name: Upload the installer as a workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ControllerStarterSetup
+          path: ControllerStarterSetup.exe
+          if-no-files-found: error
+
+      # SignPath signing step goes here once the project is enrolled:
+      # the unsigned artifact above is submitted, and the signed one is
+      # downloaded back before the release step below.
+
+      - name: Attach the installer to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ github.ref_name }}'
+          gh release upload $tag ControllerStarterSetup.exe --clobber

@@ -6,6 +6,7 @@ Windows'ta konsol gibi bir deneyim: kontrolcüyü eline al, oyna, bırak. Klavye
 
 [🇬🇧 English](README.md) · 🇹🇷 Türkçe
 
+![Build](https://github.com/SametEge/ControllerStarter/actions/workflows/build.yml/badge.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6)
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -127,7 +128,8 @@ ControllerStarter/
 ├── build/                     # derleme betikleri
 │   ├── Build-Exe.ps1
 │   └── Build-Setup.ps1
-├── docs/                      # README ekran görüntüleri
+├── docs/                      # ekran görüntüleri, imzalama politikası
+├── .github/workflows/         # CI derlemesi
 ├── README.md                  # İngilizce sürüm
 ├── README.tr.md               # bu dosya
 └── LICENSE
@@ -214,6 +216,12 @@ powershell -ExecutionPolicy Bypass -File .\build\Build-Exe.ps1 -CheckPolicy
 
 - **`app\Setup.bat` kullan.** Toplu iş dosyaları bu kısıttan etkilenmez ve sana aynı tepsi uygulamasını verir. Kapatılacak bir şey yok.
 - **Smart App Control'ü kapat:** Windows Güvenliği → Uygulama ve tarayıcı denetimi → Akıllı Uygulama Denetimi. ⚠️ **Bu, Windows'u yeniden kurmadan geri alınamaz** ve korumayı yalnızca bu uygulama için değil, tüm sistem için kaldırır. Tek bir simgenin rahatlığıyla bunu tartarak karar ver.
+
+### Yayınlanan dosya nasıl üretiliyor
+
+Releases sayfasındaki her kurulum dosyası, etiketin işaret ettiği commit'ten, temiz bir Windows runner'ında [GitHub Actions workflow'u](.github/workflows/build.yml) tarafından derleniyor — hiçbir zaman bir geliştirici makinesinden değil. Workflow, yayınlamadan önce ürün meta verisini ve gömülü payload'ın eksiksiz olduğunu doğruluyor.
+
+Bu ikililerin arkasında kimin durduğu, nasıl derlendikleri ve makinende ne yaptıkları [kod imzalama politikasında](docs/code-signing-policy.md) yazılı.
 
 ### Kendin derlemek
 

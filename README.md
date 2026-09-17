@@ -6,6 +6,7 @@ A console-like experience on Windows: pick up the controller, play, put it down.
 
 🇬🇧 English · [🇹🇷 Türkçe](README.tr.md)
 
+![Build](https://github.com/SametEge/ControllerStarter/actions/workflows/build.yml/badge.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6)
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -127,7 +128,8 @@ ControllerStarter/
 ├── build/                     # build scripts
 │   ├── Build-Exe.ps1
 │   └── Build-Setup.ps1
-├── docs/                      # README screenshots
+├── docs/                      # screenshots, code signing policy
+├── .github/workflows/         # CI build
 ├── README.md                  # this file
 ├── README.tr.md               # Turkish version
 └── LICENSE
@@ -214,6 +216,12 @@ If it reports **On (enforcing)**, you have two options:
 
 - **Use `app\Setup.bat`.** Batch launchers are not affected and give you the same tray app. Nothing to disable.
 - **Turn Smart App Control off** under Windows Security → App & browser control → Smart App Control. ⚠️ **This cannot be undone without reinstalling Windows**, and it removes the protection for every application, not just this one. Weigh that against the convenience of one icon.
+
+### How the published binary is produced
+
+Every installer on the Releases page is built by [a GitHub Actions workflow](.github/workflows/build.yml) on a clean Windows runner, from the commit its tag points at — never from a developer machine. The workflow checks the product metadata and verifies that the embedded payload contains every expected file before publishing.
+
+Who stands behind those binaries, how they are built and what they do on your machine is written down in the [code signing policy](docs/code-signing-policy.md).
 
 ### Building it yourself
 
