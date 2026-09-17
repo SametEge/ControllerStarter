@@ -12,7 +12,7 @@ A console-like experience on Windows: pick up the controller, play, put it down.
 ![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
 
 <p align="center">
-  <img src="docs/setup.png" alt="Controller Starter setup window" width="440">
+  <img src="docs/setup-en.png" alt="Controller Starter setup window" width="440">
 </p>
 
 ---
@@ -127,7 +127,7 @@ ControllerStarter/
 ├── build/                     # build scripts
 │   ├── Build-Exe.ps1
 │   └── Build-Setup.ps1
-├── docs/setup.png
+├── docs/                      # README screenshots
 ├── README.md                  # this file
 ├── README.tr.md               # Turkish version
 └── LICENSE

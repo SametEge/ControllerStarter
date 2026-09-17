@@ -12,7 +12,7 @@ Windows'ta konsol gibi bir deneyim: kontrolcüyü eline al, oyna, bırak. Klavye
 ![Bağımlılık](https://img.shields.io/badge/ba%C4%9F%C4%B1ml%C4%B1l%C4%B1k-yok-brightgreen)
 
 <p align="center">
-  <img src="docs/setup.png" alt="Controller Starter kurulum penceresi" width="440">
+  <img src="docs/setup-tr.png" alt="Controller Starter kurulum penceresi" width="440">
 </p>
 
 ---
@@ -127,7 +127,7 @@ ControllerStarter/
 ├── build/                     # derleme betikleri
 │   ├── Build-Exe.ps1
 │   └── Build-Setup.ps1
-├── docs/setup.png
+├── docs/                      # README ekran görüntüleri
 ├── README.md                  # İngilizce sürüm
 ├── README.tr.md               # bu dosya
 └── LICENSE

@@ -1,4 +1,5 @@
-{
+﻿{
+  "language": "auto",
   "steamExePath": "",
   "steamLaunchArgs": ["-bigpicture"],
 
@@ -20,3 +21,10 @@
   "logEnabled": true,
   "logMaxSizeKB": 1024
 }
+
+
+
+
+
+
+

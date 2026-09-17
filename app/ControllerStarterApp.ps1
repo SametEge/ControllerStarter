@@ -33,6 +33,10 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
+# Claim an identity before any window exists, so the shell files this as
+# Controller Starter rather than as PowerShell.
+try { [ControllerStarterNative]::SetAppId('SametEge.ControllerStarter') } catch { }
+
 Initialize-ControllerStarter -Root $PSScriptRoot
 
 # ---------------------------------------------------------------------------
@@ -179,6 +183,10 @@ function Show-SettingsDialog {
     $form.BackColor       = [System.Drawing.Color]::White
     $form.Font            = $font
     $form.Icon            = $IconActive
+    # This is a tray application; its settings window does not belong in the
+    # taskbar, where it would otherwise sit under a PowerShell button.
+    $form.ShowInTaskbar   = $false
+    $form.TopMost         = $true
 
     $y = 18
 

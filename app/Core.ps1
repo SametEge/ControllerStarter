@@ -228,6 +228,18 @@ public static class ControllerStarterNative
     [DllImport("user32.dll")]
     public static extern bool DestroyIcon(IntPtr hIcon);
 
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern int SetCurrentProcessExplicitAppUserModelID(string appId);
+
+    // Without this the process is just powershell.exe as far as the shell is
+    // concerned, so anything it shows is filed under PowerShell. Giving it an
+    // explicit identity makes Windows treat it as its own application.
+    public static void SetAppId(string appId)
+    {
+        try { SetCurrentProcessExplicitAppUserModelID(appId); }
+        catch { }
+    }
+
     public static void HideConsole()
     {
         IntPtr handle = GetConsoleWindow();
