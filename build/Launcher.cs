@@ -1,8 +1,9 @@
 // Controller Starter - launcher stub.
 //
 // Compiled as a Windows (non-console) executable so that double-clicking it
-// starts the watcher without flashing a console window. Everything it does is
-// start ControllerStarter.ps1 sitting next to it, forwarding any switches.
+// starts the tray application without flashing a console window. All it does
+// is launch ControllerStarterApp.ps1 sitting next to it, forwarding any
+// switches (for example -Setup).
 //
 // Build with Build-Exe.ps1.
 //
@@ -16,9 +17,17 @@ using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
 
+[assembly: AssemblyTitle("Controller Starter")]
+[assembly: AssemblyProduct("Controller Starter")]
+[assembly: AssemblyDescription("Launches Steam when an Xbox controller connects and closes the game plus Steam when it disconnects.")]
+[assembly: AssemblyCompany("Samet Ege")]
+[assembly: AssemblyCopyright("Copyright (c) 2026 Samet Ege - MIT License")]
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+
 internal static class Launcher
 {
-    private const string ScriptName = "ControllerStarter.ps1";
+    private const string ScriptName = "ControllerStarterApp.ps1";
     private const string Caption = "Controller Starter";
 
     [STAThread]
@@ -44,7 +53,7 @@ internal static class Launcher
         arguments.Append(script);
         arguments.Append('"');
 
-        // Forward switches such as -NoHide or -Once straight through.
+        // Forward switches such as -Setup or -NoHide straight through.
         foreach (string arg in args)
         {
             arguments.Append(' ');

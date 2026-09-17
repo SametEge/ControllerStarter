@@ -63,9 +63,12 @@ git clone https://github.com/YOUR_USERNAME/controller-starter.git
 | File | What it does |
 |---|---|
 | **`Setup.bat`** | Opens the setup window: options, autostart choice, install and start. **Start here.** |
+| **`ControllerStarter.exe`** | Same thing as a real executable — starts the tray app with no console flash. See [About the .exe](#about-the-exe). |
 | **`ControllerStarter.bat`** | Starts the tray app without touching your settings. |
 | **`Status.bat`** | Text diagnostics in a console window. |
 | **`Uninstall.bat`** | Removes autostart and stops the app. |
+
+> If `ControllerStarter.exe` does nothing when you double-click it, Smart App Control is blocking it — use `Setup.bat` instead, or read [About the .exe](#about-the-exe).
 
 ## The tray icon
 
@@ -122,8 +125,9 @@ Controller Starter/
 ├── src/Core.ps1               # shared engine: XInput, Steam, state machine
 ├── Install.ps1                # command-line install
 ├── Uninstall.ps1              # command-line uninstall
-├── Build-Exe.ps1              # optional launcher build
-├── build/Launcher.cs          # source for that launcher
+├── ControllerStarter.exe      # compiled launcher (unsigned)
+├── Build-Exe.ps1              # rebuilds that launcher
+├── build/Launcher.cs          # its C# source
 ├── config.json                # all settings
 ├── docs/setup.png             # screenshot used in this README
 ├── README.md                  # this file
@@ -196,19 +200,30 @@ Unsaved progress can still be lost, especially in games without autosave. Tune t
 
 ## About the .exe
 
-Controller Starter ships as PowerShell rather than a compiled binary, and that is a deliberate choice rather than a missing feature.
+`ControllerStarter.exe` is a 16 KB launcher: it starts the tray app with no console window at all. It is not a repackaged interpreter — the engine is still the PowerShell alongside it, which you can read.
 
-A launcher executable can be built from source at any time:
+### The Smart App Control catch
+
+The executable is **unsigned**. Windows 11 with **Smart App Control** enabled refuses to run unsigned binaries — double-clicking does nothing visible, and from a console you get *"Application Control policy blocked this file"*. Signing requires a code-signing certificate from a trusted CA, which is a paid, identity-verified product.
+
+Check your machine:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Build-Exe.ps1 -CheckPolicy
+```
+
+If it reports **On (enforcing)**, you have two options:
+
+- **Use `Setup.bat`.** Batch launchers are not affected and give you the same tray app. Nothing to disable.
+- **Turn Smart App Control off** under Windows Security → App & browser control → Smart App Control. ⚠️ **This cannot be undone without reinstalling Windows**, and it removes the protection for every application, not just this one. Weigh that against the convenience of one icon.
+
+### Building it yourself
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\Build-Exe.ps1
 ```
 
-This compiles `build/Launcher.cs` into `ControllerStarter.exe` with the C# compiler bundled in the .NET Framework — nothing to install.
-
-> **The catch:** the result is an *unsigned* executable. Windows 11 with **Smart App Control** enabled blocks unsigned binaries outright — the file simply refuses to run, with "Application Control policy blocked this file". Code signing requires a certificate from a trusted CA. The `.bat` launchers are not subject to this, which is why they are the supported path.
-
-No prebuilt binary is committed to this repository on purpose — you should not have to trust an executable you did not build.
+This generates the multi-resolution icon from the same drawing code the tray icon uses, then compiles `build/Launcher.cs` with the C# compiler bundled in the .NET Framework. Nothing to install, and you never have to trust a binary you did not build.
 
 ## Uninstalling
 

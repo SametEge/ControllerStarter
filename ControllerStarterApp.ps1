@@ -134,44 +134,8 @@ if (-not $Texts.ContainsKey($lang)) { $lang = 'en' }
 $T = $Texts[$lang]
 
 # ---------------------------------------------------------------------------
-# Icons
+# Icons (drawn by New-GamepadIcon in src\Core.ps1)
 # ---------------------------------------------------------------------------
-
-function New-GamepadIcon {
-    param([Parameter(Mandatory)][System.Drawing.Color]$Color)
-
-    $bitmap = New-Object System.Drawing.Bitmap(32, 32)
-    $g = [System.Drawing.Graphics]::FromImage($bitmap)
-    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-    $g.Clear([System.Drawing.Color]::Transparent)
-
-    # A flat, wide silhouette with downward grips reads as a gamepad even when
-    # Windows scales the icon down to 16 px in the notification area.
-    $body = New-Object System.Drawing.SolidBrush($Color)
-    $g.FillEllipse($body, 0, 7, 15, 15)    # left grip
-    $g.FillEllipse($body, 17, 7, 15, 15)   # right grip
-    $g.FillEllipse($body, 1, 14, 11, 13)   # left handle
-    $g.FillEllipse($body, 20, 14, 11, 13)  # right handle
-    $g.FillRectangle($body, 7, 8, 18, 12)  # centre bridge
-
-    $hole = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(235, 24, 24, 27))
-    $g.FillRectangle($hole, 4, 12, 9, 3)   # d-pad, horizontal
-    $g.FillRectangle($hole, 7, 9, 3, 9)    # d-pad, vertical
-    $g.FillEllipse($hole, 19, 9, 5, 5)     # button
-    $g.FillEllipse($hole, 23, 13, 5, 5)    # button
-
-    $body.Dispose()
-    $hole.Dispose()
-    $g.Dispose()
-
-    $handle = $bitmap.GetHicon()
-    $icon   = [System.Drawing.Icon]::FromHandle($handle)
-    $clone  = [System.Drawing.Icon]$icon.Clone()
-    [void][ControllerStarterNative]::DestroyIcon($handle)
-    $bitmap.Dispose()
-
-    return $clone
-}
 
 $IconActive    = New-GamepadIcon -Color ([System.Drawing.Color]::FromArgb(255, 76, 175, 80))
 $IconWaiting   = New-GamepadIcon -Color ([System.Drawing.Color]::FromArgb(255, 158, 158, 158))

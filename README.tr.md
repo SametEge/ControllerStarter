@@ -63,9 +63,12 @@ git clone https://github.com/KULLANICI_ADIN/controller-starter.git
 | Dosya | Ne yapar |
 |---|---|
 | **`Setup.bat`** | Kurulum penceresini açar: seçenekler, otomatik başlatma tercihi, kur ve başlat. **Buradan başla.** |
+| **`ControllerStarter.exe`** | Aynı işin gerçek çalıştırılabilir hâli — konsol hiç görünmeden tepsi uygulamasını başlatır. Bkz. [.exe hakkında](#exe-hakkında). |
 | **`ControllerStarter.bat`** | Ayarlarına dokunmadan tepsi uygulamasını başlatır. |
 | **`Status.bat`** | Konsol penceresinde metin teşhisi. |
 | **`Uninstall.bat`** | Otomatik başlatmayı kaldırır ve uygulamayı durdurur. |
+
+> `ControllerStarter.exe`'ye çift tıklayınca hiçbir şey olmuyorsa Smart App Control engelliyordur — `Setup.bat` kullan ya da [.exe hakkında](#exe-hakkında) bölümünü oku.
 
 ## Tepsi simgesi
 
@@ -122,8 +125,9 @@ Controller Starter/
 ├── src/Core.ps1               # ortak motor: XInput, Steam, durum makinesi
 ├── Install.ps1                # komut satırından kurulum
 ├── Uninstall.ps1              # komut satırından kaldırma
-├── Build-Exe.ps1              # isteğe bağlı başlatıcı derleme
-├── build/Launcher.cs          # o başlatıcının kaynağı
+├── ControllerStarter.exe      # derlenmiş başlatıcı (imzasız)
+├── Build-Exe.ps1              # o başlatıcıyı yeniden derler
+├── build/Launcher.cs          # C# kaynağı
 ├── config.json                # tüm ayarlar
 ├── docs/setup.png             # README'deki ekran görüntüsü
 ├── README.md                  # İngilizce sürüm
@@ -196,19 +200,30 @@ Bu araç işlem kapatıyor, dolayısıyla neye dokunup neye dokunmadığı net o
 
 ## .exe hakkında
 
-Controller Starter derlenmiş bir ikili yerine PowerShell olarak dağıtılıyor; bu eksiklik değil, bilinçli bir tercih.
+`ControllerStarter.exe`, 16 KB'lık bir başlatıcı: tepsi uygulamasını konsol hiç görünmeden açar. İçine gömülmüş bir yorumlayıcı değil — motor yanındaki, okuyabileceğin PowerShell dosyalarıdır.
 
-Başlatıcı çalıştırılabilir dosyası istediğin zaman kaynaktan derlenebilir:
+### Smart App Control engeli
+
+Çalıştırılabilir dosya **imzasızdır**. **Smart App Control** (Akıllı Uygulama Denetimi) açık olan Windows 11 imzasız ikilileri çalıştırmayı reddeder — çift tıklayınca görünürde hiçbir şey olmaz, konsoldan çalıştırırsan *"Uygulama Denetimi ilkesi bu dosyayı engelledi"* dersin. İmzalamak, güvenilir bir sertifika otoritesinden alınan, kimlik doğrulamalı ve ücretli bir kod imzalama sertifikası gerektirir.
+
+Makineni kontrol et:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Build-Exe.ps1 -CheckPolicy
+```
+
+**On (enforcing)** diyorsa iki seçeneğin var:
+
+- **`Setup.bat` kullan.** Toplu iş dosyaları bu kısıttan etkilenmez ve sana aynı tepsi uygulamasını verir. Kapatılacak bir şey yok.
+- **Smart App Control'ü kapat:** Windows Güvenliği → Uygulama ve tarayıcı denetimi → Akıllı Uygulama Denetimi. ⚠️ **Bu, Windows'u yeniden kurmadan geri alınamaz** ve korumayı yalnızca bu uygulama için değil, tüm sistem için kaldırır. Tek bir simgenin rahatlığıyla bunu tartarak karar ver.
+
+### Kendin derlemek
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\Build-Exe.ps1
 ```
 
-Bu komut `build/Launcher.cs` dosyasını, .NET Framework ile gelen C# derleyicisiyle `ControllerStarter.exe` haline getirir; kurulacak bir şey yoktur.
-
-> **Ama şu var:** ortaya çıkan dosya *imzasızdır*. **Smart App Control** (Akıllı Uygulama Denetimi) açık olan Windows 11'de imzasız çalıştırılabilir dosyalar doğrudan engellenir — dosya "Uygulama Denetimi ilkesi bu dosyayı engelledi" diyerek çalışmaz. Kod imzalama, güvenilir bir sertifika otoritesinden sertifika gerektirir. `.bat` başlatıcıları bu kısıttan etkilenmez, desteklenen yol olmalarının sebebi budur.
-
-Depoya bilerek hazır bir ikili dosya konmadı — kendin derlemediğin bir çalıştırılabilir dosyaya güvenmek zorunda kalmamalısın.
+Bu komut, tepsi simgesiyle aynı çizim kodundan çok boyutlu ikonu üretir, sonra `build/Launcher.cs` dosyasını .NET Framework ile gelen C# derleyicisiyle derler. Kurulacak bir şey yok ve kendin derlemediğin bir ikiliye güvenmek zorunda kalmazsın.
 
 ## Kaldırma
 

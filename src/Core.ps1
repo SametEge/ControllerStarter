@@ -238,6 +238,121 @@ function Hide-ConsoleWindow {
     try { [ControllerStarterNative]::HideConsole() } catch { }
 }
 
+# ---------------------------------------------------------------------------
+# Artwork
+#
+# The gamepad mark is drawn in code rather than shipped as a binary asset, so
+# the tray icon and the launcher's .ico come from one definition.
+#
+# Loaded here rather than inside the functions: typed parameters and default
+# values are bound before a function body runs.
+# ---------------------------------------------------------------------------
+
+Add-Type -AssemblyName System.Drawing
+
+function New-GamepadBitmap {
+    param(
+        [int]$Size = 32,
+        [Parameter(Mandatory)][System.Drawing.Color]$Color
+    )
+
+    $bitmap = New-Object System.Drawing.Bitmap($Size, $Size)
+    $g = [System.Drawing.Graphics]::FromImage($bitmap)
+    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $g.Clear([System.Drawing.Color]::Transparent)
+
+    # Everything below is authored on a 32x32 grid and scaled to $Size.
+    $g.ScaleTransform($Size / 32, $Size / 32)
+
+    # A flat, wide silhouette with downward grips reads as a gamepad even when
+    # Windows scales the icon down to 16 px in the notification area.
+    $body = New-Object System.Drawing.SolidBrush($Color)
+    $g.FillEllipse($body, 0, 7, 15, 15)    # left grip
+    $g.FillEllipse($body, 17, 7, 15, 15)   # right grip
+    $g.FillEllipse($body, 1, 14, 11, 13)   # left handle
+    $g.FillEllipse($body, 20, 14, 11, 13)  # right handle
+    $g.FillRectangle($body, 7, 8, 18, 12)  # centre bridge
+
+    $hole = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(235, 24, 24, 27))
+    $g.FillRectangle($hole, 4, 12, 9, 3)   # d-pad, horizontal
+    $g.FillRectangle($hole, 7, 9, 3, 9)    # d-pad, vertical
+    $g.FillEllipse($hole, 19, 9, 5, 5)     # button
+    $g.FillEllipse($hole, 23, 13, 5, 5)    # button
+
+    $body.Dispose()
+    $hole.Dispose()
+    $g.Dispose()
+
+    return $bitmap
+}
+
+function New-GamepadIcon {
+    param([Parameter(Mandatory)][System.Drawing.Color]$Color)
+
+    $bitmap = New-GamepadBitmap -Size 32 -Color $Color
+    $handle = $bitmap.GetHicon()
+    $icon   = [System.Drawing.Icon]::FromHandle($handle)
+    $clone  = [System.Drawing.Icon]$icon.Clone()
+
+    [void][ControllerStarterNative]::DestroyIcon($handle)
+    $bitmap.Dispose()
+
+    return $clone
+}
+
+function Save-GamepadIcoFile {
+    <#
+        Writes a multi-resolution .ico (PNG-compressed entries, Vista and
+        later) so the compiled launcher gets a crisp icon at every size
+        Explorer asks for.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [System.Drawing.Color]$Color = [System.Drawing.Color]::FromArgb(255, 76, 175, 80)
+    )
+
+    $sizes   = @(16, 24, 32, 48, 64, 128, 256)
+    $payload = @()
+
+    foreach ($size in $sizes) {
+        $bitmap = New-GamepadBitmap -Size $size -Color $Color
+        $stream = New-Object System.IO.MemoryStream
+        $bitmap.Save($stream, [System.Drawing.Imaging.ImageFormat]::Png)
+        $payload += , $stream.ToArray()
+        $stream.Dispose()
+        $bitmap.Dispose()
+    }
+
+    $file   = [System.IO.File]::Create($Path)
+    $writer = New-Object System.IO.BinaryWriter($file)
+
+    $writer.Write([uint16]0)              # reserved
+    $writer.Write([uint16]1)              # type: icon
+    $writer.Write([uint16]$sizes.Count)
+
+    $offset = 6 + (16 * $sizes.Count)
+    for ($i = 0; $i -lt $sizes.Count; $i++) {
+        $dimension = if ($sizes[$i] -ge 256) { 0 } else { $sizes[$i] }
+        $writer.Write([byte]$dimension)   # width
+        $writer.Write([byte]$dimension)   # height
+        $writer.Write([byte]0)            # palette entries
+        $writer.Write([byte]0)            # reserved
+        $writer.Write([uint16]1)          # colour planes
+        $writer.Write([uint16]32)         # bits per pixel
+        $writer.Write([uint32]$payload[$i].Length)
+        $writer.Write([uint32]$offset)
+        $offset += $payload[$i].Length
+    }
+
+    foreach ($png in $payload) { $writer.Write($png) }
+
+    $writer.Flush()
+    $writer.Dispose()
+    $file.Dispose()
+
+    return $Path
+}
+
 function Get-ConnectedPadCount {
     try { return [ControllerStarterNative]::ConnectedCount() }
     catch {
