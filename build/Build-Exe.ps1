@@ -1,7 +1,7 @@
 ﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
-    Compiles ControllerStarter.exe from build\Launcher.cs.
+    Compiles app\ControllerStarter.exe from src\Launcher.cs.
 
 .DESCRIPTION
     Generates the gamepad .ico from the same drawing code the tray icon uses,
@@ -30,7 +30,9 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-. (Join-Path $PSScriptRoot 'src\Core.ps1')
+$Repo = Split-Path -Parent $PSScriptRoot
+
+. (Join-Path $Repo 'app\Core.ps1')
 
 function Get-SmartAppControlState {
     try {
@@ -63,22 +65,18 @@ if ($CheckPolicy) {
     return
 }
 
-$Source = Join-Path $PSScriptRoot 'build\Launcher.cs'
-$IconFile = Join-Path $PSScriptRoot 'build\app.ico'
-$Output = Join-Path $PSScriptRoot 'ControllerStarter.exe'
+$Source   = Join-Path $Repo 'src\Launcher.cs'
+$IconFile = Join-Path $PSScriptRoot 'app.ico'
+$Output   = Join-Path $Repo 'app\ControllerStarter.exe'
 
-if (-not (Test-Path -LiteralPath $Source)) {
-    throw "Source file not found: $Source"
-}
+if (-not (Test-Path -LiteralPath $Source)) { throw "Source file not found: $Source" }
 
 $csc = @(
     'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe',
     'C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe'
 ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 
-if (-not $csc) {
-    throw 'csc.exe (.NET Framework 4.x compiler) not found.'
-}
+if (-not $csc) { throw 'csc.exe (.NET Framework 4.x compiler) not found.' }
 
 Write-Host ''
 Write-Host 'Controller Starter - launcher build' -ForegroundColor Cyan
@@ -104,12 +102,12 @@ if ($LASTEXITCODE -ne 0) {
 
 $size = [Math]::Round((Get-Item -LiteralPath $Output).Length / 1KB, 1)
 Write-Host ''
-Write-Host "Built ControllerStarter.exe ($size KB)." -ForegroundColor Green
+Write-Host "Built app\ControllerStarter.exe ($size KB)." -ForegroundColor Green
 
 if ($policy -like 'On*') {
     Write-Host ''
     Write-Host 'Heads up: Smart App Control is enabled, so Windows will refuse to' -ForegroundColor Yellow
-    Write-Host 'run this unsigned executable. The .bat launchers work regardless.' -ForegroundColor Yellow
+    Write-Host 'run this unsigned executable. app\Setup.bat works regardless.' -ForegroundColor Yellow
 }
 
 Write-Host ''

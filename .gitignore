@@ -21,3 +21,6 @@ $RECYCLE.BIN/
 
 # Release artifact, attached to GitHub Releases rather than committed
 ControllerStarterSetup.exe
+
+# Build outputs
+app/ControllerStarter.exe

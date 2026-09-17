@@ -32,7 +32,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-. (Join-Path $PSScriptRoot 'src\Core.ps1')
+. (Join-Path $PSScriptRoot 'Core.ps1')
 
 Initialize-ControllerStarter -Root $PSScriptRoot -ConfigPath $ConfigPath
 

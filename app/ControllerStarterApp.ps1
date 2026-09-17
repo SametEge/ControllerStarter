@@ -28,7 +28,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-. (Join-Path $PSScriptRoot 'src\Core.ps1')
+. (Join-Path $PSScriptRoot 'Core.ps1')
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -52,6 +52,10 @@ $Texts = @{
         NotConnected   = 'Bağlı değil'
         NotFound       = 'Bulunamadı'
         OptionsHeader  = 'Seçenekler'
+        LanguageLabel  = 'Arayüz dili'
+        LangAuto       = 'Otomatik (Windows dili)'
+        LangTr         = 'Türkçe'
+        LangEn         = 'English'
         AutoStart      = 'Windows başlangıcında çalıştır'
         BigPicture     = "Steam'i Big Picture modunda aç"
         CloseGames     = 'Bağlantı kesilince oyunu kapat'
@@ -94,6 +98,10 @@ $Texts = @{
         NotConnected   = 'Not connected'
         NotFound       = 'Not found'
         OptionsHeader  = 'Options'
+        LanguageLabel  = 'Interface language'
+        LangAuto       = 'Automatic (Windows language)'
+        LangTr         = 'Türkçe'
+        LangEn         = 'English'
         AutoStart      = 'Start with Windows'
         BigPicture     = 'Open Steam in Big Picture mode'
         CloseGames     = 'Close the game on disconnect'
@@ -126,15 +134,22 @@ $Texts = @{
     }
 }
 
-$lang = $Global:CS.Config.language
-if (-not $lang -or $lang -eq 'auto') {
-    $lang = if ((Get-Culture).TwoLetterISOLanguageName -eq 'tr') { 'tr' } else { 'en' }
+$LanguageCodes = @('auto', 'tr', 'en')
+
+function Resolve-Language {
+    # 'auto' follows Windows; anything unknown falls back to English.
+    $lang = [string]$Global:CS.Config.language
+    if (-not $lang -or $lang -eq 'auto') {
+        $lang = if ((Get-Culture).TwoLetterISOLanguageName -eq 'tr') { 'tr' } else { 'en' }
+    }
+    if (-not $Texts.ContainsKey($lang)) { $lang = 'en' }
+    return $lang
 }
-if (-not $Texts.ContainsKey($lang)) { $lang = 'en' }
-$T = $Texts[$lang]
+
+$script:T = $Texts[(Resolve-Language)]
 
 # ---------------------------------------------------------------------------
-# Icons (drawn by New-GamepadIcon in src\Core.ps1)
+# Icons (drawn by New-GamepadIcon in Core.ps1)
 # ---------------------------------------------------------------------------
 
 $IconActive    = New-GamepadIcon -Color ([System.Drawing.Color]::FromArgb(255, 76, 175, 80))
@@ -156,7 +171,7 @@ function Show-SettingsDialog {
 
     $form                 = New-Object System.Windows.Forms.Form
     $form.Text            = if ($IsSetup) { $T.SetupTitle } else { $T.SettingsTitle }
-    $form.Size            = New-Object System.Drawing.Size(470, 560)
+    $form.Size            = New-Object System.Drawing.Size(470, 600)
     $form.FormBorderStyle = 'FixedDialog'
     $form.MaximizeBox     = $false
     $form.MinimizeBox     = $false
@@ -230,6 +245,24 @@ function Show-SettingsDialog {
     $form.Controls.Add($optionsHeader)
 
     $y += 24
+
+    $langLabel          = New-Object System.Windows.Forms.Label
+    $langLabel.Text     = $T.LanguageLabel
+    $langLabel.Location = New-Object System.Drawing.Point(26, ($y + 4))
+    $langLabel.Size     = New-Object System.Drawing.Size(120, 20)
+    $form.Controls.Add($langLabel)
+
+    $langBox               = New-Object System.Windows.Forms.ComboBox
+    $langBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+    $langBox.Location      = New-Object System.Drawing.Point(150, $y)
+    $langBox.Size          = New-Object System.Drawing.Size(220, 24)
+    [void]$langBox.Items.Add($T.LangAuto)
+    [void]$langBox.Items.Add($T.LangTr)
+    [void]$langBox.Items.Add($T.LangEn)
+    $langBox.SelectedIndex = [Math]::Max(0, $LanguageCodes.IndexOf([string]$Global:CS.Config.language))
+    $form.Controls.Add($langBox)
+
+    $y += 36
 
     function New-Check {
         param([string]$Text, [bool]$Checked, [int]$Top)
@@ -318,7 +351,7 @@ function Show-SettingsDialog {
     # --- Buttons -------------------------------------------------------
     $ok          = New-Object System.Windows.Forms.Button
     $ok.Text     = if ($IsSetup) { $T.InstallRun } else { $T.Save }
-    $ok.Location = New-Object System.Drawing.Point(232, 475)
+    $ok.Location = New-Object System.Drawing.Point(232, 513)
     $ok.Size     = New-Object System.Drawing.Size(120, 32)
     $ok.DialogResult = [System.Windows.Forms.DialogResult]::OK
     $form.Controls.Add($ok)
@@ -326,11 +359,16 @@ function Show-SettingsDialog {
 
     $cancel          = New-Object System.Windows.Forms.Button
     $cancel.Text     = $T.Cancel
-    $cancel.Location = New-Object System.Drawing.Point(360, 475)
+    $cancel.Location = New-Object System.Drawing.Point(360, 513)
     $cancel.Size     = New-Object System.Drawing.Size(74, 32)
     $cancel.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
     $form.Controls.Add($cancel)
     $form.CancelButton = $cancel
+
+    $form.Add_Shown({
+        $this.Activate()
+        try { [ControllerStarterNative]::ForceShow($this.Handle) } catch { }
+    })
 
     $result = $form.ShowDialog()
 
@@ -340,6 +378,7 @@ function Show-SettingsDialog {
     }
 
     # --- Apply ---------------------------------------------------------
+    $Global:CS.Config.language               = $LanguageCodes[$langBox.SelectedIndex]
     $Global:CS.Config.steamLaunchArgs        = if ($chkBigPicture.Checked) { @('-bigpicture') } else { @() }
     $Global:CS.Config.closeGamesOnDisconnect = $chkCloseGames.Checked
     $Global:CS.Config.closeSteamOnDisconnect = $chkCloseSteam.Checked
@@ -349,6 +388,9 @@ function Show-SettingsDialog {
 
     Export-Config -Config $Global:CS.Config
     Update-SteamPaths
+
+    # Re-resolve the string table so a language change takes effect at once.
+    $script:T = $Texts[(Resolve-Language)]
 
     if ($chkAutoStart.Checked) {
         # Always re-register rather than skipping when an entry exists: an older
@@ -469,6 +511,16 @@ function Update-TrayVisual {
     $tray.Text = $tip
 }
 
+function Update-MenuTexts {
+    # Called after the settings dialog, so a language change reaches the menu
+    # without restarting the application.
+    $menuHeader.Text   = $T.AppName
+    $menuSettings.Text = $T.MenuSettings
+    $menuLog.Text      = $T.MenuLog
+    $menuPause.Text    = if ($script:State.Paused) { $T.MenuResume } else { $T.MenuPause }
+    $menuExit.Text     = $T.MenuExit
+}
+
 # ---------------------------------------------------------------------------
 # Watcher loop, driven by the UI timer
 # ---------------------------------------------------------------------------
@@ -502,6 +554,7 @@ $timer.Add_Tick({
 $menuSettings.Add_Click({
     if (Show-SettingsDialog) {
         $timer.Interval = [Math]::Max(1, [int]$Global:CS.Config.pollIntervalSeconds) * 1000
+        Update-MenuTexts
         Update-TrayVisual
     }
 })
@@ -530,6 +583,7 @@ $menuExit.Add_Click({
 $tray.Add_DoubleClick({
     if (Show-SettingsDialog) {
         $timer.Interval = [Math]::Max(1, [int]$Global:CS.Config.pollIntervalSeconds) * 1000
+        Update-MenuTexts
         Update-TrayVisual
     }
 })

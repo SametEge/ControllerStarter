@@ -51,7 +51,7 @@ A console-like experience on Windows: pick up the controller, play, put it down.
 
 The installer is a single self-contained file — the application is embedded inside it. It installs per-user (no administrator rights), adds a Start Menu shortcut and registers an entry under *Apps & features* so it uninstalls like any other program.
 
-> **Windows 11 with Smart App Control:** the installer is unsigned and Windows will refuse to run it. There is no way around that short of turning the feature off — see [About the .exe](#about-the-exe). If you would rather not, clone the repository and double-click `Setup.bat` instead; it gives you exactly the same application.
+> **Windows 11 with Smart App Control:** the installer is unsigned and Windows will refuse to run it. There is no way around that short of turning the feature off — see [About the .exe](#about-the-exe). If you would rather not, clone the repository and double-click `app\Setup.bat` instead; it gives you exactly the same application.
 
 ### Running from source instead
 
@@ -59,21 +59,13 @@ The installer is a single self-contained file — the application is embedded in
 git clone https://github.com/SametEge/ControllerStarter.git
 ```
 
-Then double-click `Setup.bat`. Nothing to build, nothing to install.
+Then double-click **`app\Setup.bat`**. It opens the same setup window the installer shows. Nothing to build, nothing to install, and Smart App Control does not block it.
 
+For a text-only diagnostic report:
 
-
-### Launchers
-
-| File | What it does |
-|---|---|
-| **`Setup.bat`** | Opens the setup window: options, autostart choice, install and start. **Start here.** |
-| **`ControllerStarter.exe`** | Same thing as a real executable — starts the tray app with no console flash. See [About the .exe](#about-the-exe). |
-| **`ControllerStarter.bat`** | Starts the tray app without touching your settings. |
-| **`Status.bat`** | Text diagnostics in a console window. |
-| **`Uninstall.bat`** | Removes autostart and stops the app. |
-
-> If `ControllerStarter.exe` does nothing when you double-click it, Smart App Control is blocking it — use `Setup.bat` instead, or read [About the .exe](#about-the-exe).
+```powershell
+powershell -ExecutionPolicy Bypass -File .\app\ControllerStarter.ps1 -Once
+```
 
 ## The tray icon
 
@@ -120,23 +112,22 @@ The `Suspended` state exists so that quitting Steam by hand — while the contro
 ## Files
 
 ```
-Controller Starter/
-├── Setup.bat                  # double-click: setup window
-├── ControllerStarter.bat      # double-click: start the tray app
-├── Status.bat                 # double-click: text diagnostics
-├── Uninstall.bat              # double-click: remove
-├── ControllerStarterApp.ps1   # tray app, setup and settings UI
-├── ControllerStarter.ps1      # headless watcher (no UI)
-├── src/Core.ps1               # shared engine: XInput, Steam, state machine
-├── Install.ps1                # command-line install
-├── Uninstall.ps1              # command-line uninstall
-├── ControllerStarter.exe      # compiled launcher (unsigned)
-├── Build-Exe.ps1              # rebuilds that launcher
-├── Build-Setup.ps1            # builds the single-file installer
-├── installer/Setup.cs         # installer source
-├── build/Launcher.cs          # its C# source
-├── config.json                # all settings
-├── docs/setup.png             # screenshot used in this README
+ControllerStarter/
+├── app/                       # the application — this is what gets installed
+│   ├── ControllerStarterApp.ps1   # tray app, setup and settings window
+│   ├── ControllerStarter.ps1      # headless watcher, and -Once diagnostics
+│   ├── Core.ps1                   # engine: XInput, Steam, state machine
+│   ├── Install.ps1                # autostart on
+│   ├── Uninstall.ps1              # autostart off
+│   ├── Setup.bat                  # run it without the installer
+│   └── config.json                # all settings
+├── src/                       # C# sources
+│   ├── Launcher.cs                # the small launcher executable
+│   └── Setup.cs                   # the installer
+├── build/                     # build scripts
+│   ├── Build-Exe.ps1
+│   └── Build-Setup.ps1
+├── docs/setup.png
 ├── README.md                  # this file
 ├── README.tr.md               # Turkish version
 └── LICENSE
@@ -216,21 +207,23 @@ The executable is **unsigned**. Windows 11 with **Smart App Control** enabled re
 Check your machine:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Build-Exe.ps1 -CheckPolicy
+powershell -ExecutionPolicy Bypass -File .\build\Build-Exe.ps1 -CheckPolicy
 ```
 
 If it reports **On (enforcing)**, you have two options:
 
-- **Use `Setup.bat`.** Batch launchers are not affected and give you the same tray app. Nothing to disable.
+- **Use `app\Setup.bat`.** Batch launchers are not affected and give you the same tray app. Nothing to disable.
 - **Turn Smart App Control off** under Windows Security → App & browser control → Smart App Control. ⚠️ **This cannot be undone without reinstalling Windows**, and it removes the protection for every application, not just this one. Weigh that against the convenience of one icon.
 
 ### Building it yourself
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Build-Exe.ps1
+powershell -ExecutionPolicy Bypass -File .\build\Build-Setup.ps1
 ```
 
-This generates the multi-resolution icon from the same drawing code the tray icon uses, then compiles `build/Launcher.cs` with the C# compiler bundled in the .NET Framework. Nothing to install, and you never have to trust a binary you did not build.
+This generates the multi-resolution icon from the same drawing code the tray icon uses, compiles `src/Launcher.cs` into `app/ControllerStarter.exe`, packs everything in `app/` into a ZIP and embeds it inside `ControllerStarterSetup.exe`. It uses the C# compiler bundled in the .NET Framework, so nothing has to be installed — and you never have to trust a binary you did not build.
+
+`build\Build-Exe.ps1` builds just the launcher, without the installer around it.
 
 ## Uninstalling
 

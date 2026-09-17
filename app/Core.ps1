@@ -223,12 +223,26 @@ public static class ControllerStarterNative
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
     [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
     public static extern bool DestroyIcon(IntPtr hIcon);
 
     public static void HideConsole()
     {
         IntPtr handle = GetConsoleWindow();
         if (handle != IntPtr.Zero) { ShowWindow(handle, 0); } // SW_HIDE
+    }
+
+    // When a process is started with a hidden window style, Windows applies
+    // that STARTUPINFO show command to the first top-level window it creates —
+    // which can leave a dialog present but invisible. Forcing SW_SHOW after the
+    // form is shown makes it appear regardless of how the process was launched.
+    public static void ForceShow(IntPtr hWnd)
+    {
+        if (hWnd == IntPtr.Zero) { return; }
+        ShowWindow(hWnd, 5); // SW_SHOW
+        SetForegroundWindow(hWnd);
     }
 }
 '@ -ErrorAction Stop

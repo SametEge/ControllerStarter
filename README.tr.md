@@ -51,7 +51,7 @@ Windows'ta konsol gibi bir deneyim: kontrolcüyü eline al, oyna, bırak. Klavye
 
 Kurulum tek dosyadır — uygulama içine gömülüdür. Kullanıcı bazında kurar (yönetici hakkı gerekmez), Başlat menüsüne kısayol ekler ve *Uygulamalar ve özellikler* altına kayıt düşer, yani diğer programlar gibi kaldırılır.
 
-> **Akıllı Uygulama Denetimi açık olan Windows 11'de:** kurulum dosyası imzasızdır ve Windows çalıştırmayı reddeder. Bu özelliği kapatmadan bunu aşmanın bir yolu yok — bkz. [.exe hakkında](#exe-hakkında). Kapatmak istemiyorsan depoyu klonlayıp `Setup.bat`'e çift tıkla; tamamen aynı uygulamayı verir.
+> **Akıllı Uygulama Denetimi açık olan Windows 11'de:** kurulum dosyası imzasızdır ve Windows çalıştırmayı reddeder. Bu özelliği kapatmadan bunu aşmanın bir yolu yok — bkz. [.exe hakkında](#exe-hakkında). Kapatmak istemiyorsan depoyu klonlayıp `app\Setup.bat`'e çift tıkla; tamamen aynı uygulamayı verir.
 
 ### Kaynaktan çalıştırmak
 
@@ -59,21 +59,13 @@ Kurulum tek dosyadır — uygulama içine gömülüdür. Kullanıcı bazında ku
 git clone https://github.com/SametEge/ControllerStarter.git
 ```
 
-Sonra `Setup.bat`'e çift tıkla. Derlenecek bir şey yok, kurulacak bir şey yok.
+Sonra **`app\Setup.bat`**'e çift tıkla. Kurulumun gösterdiği pencerenin aynısını açar. Derlenecek bir şey yok, kurulacak bir şey yok ve Akıllı Uygulama Denetimi bunu engellemez.
 
+Sadece metin teşhis raporu için:
 
-
-### Başlatıcılar
-
-| Dosya | Ne yapar |
-|---|---|
-| **`Setup.bat`** | Kurulum penceresini açar: seçenekler, otomatik başlatma tercihi, kur ve başlat. **Buradan başla.** |
-| **`ControllerStarter.exe`** | Aynı işin gerçek çalıştırılabilir hâli — konsol hiç görünmeden tepsi uygulamasını başlatır. Bkz. [.exe hakkında](#exe-hakkında). |
-| **`ControllerStarter.bat`** | Ayarlarına dokunmadan tepsi uygulamasını başlatır. |
-| **`Status.bat`** | Konsol penceresinde metin teşhisi. |
-| **`Uninstall.bat`** | Otomatik başlatmayı kaldırır ve uygulamayı durdurur. |
-
-> `ControllerStarter.exe`'ye çift tıklayınca hiçbir şey olmuyorsa Smart App Control engelliyordur — `Setup.bat` kullan ya da [.exe hakkında](#exe-hakkında) bölümünü oku.
+```powershell
+powershell -ExecutionPolicy Bypass -File .\app\ControllerStarter.ps1 -Once
+```
 
 ## Tepsi simgesi
 
@@ -120,23 +112,22 @@ Suspended ── kontrolcü kapalı ──────────────�
 ## Dosyalar
 
 ```
-Controller Starter/
-├── Setup.bat                  # çift tıkla: kurulum penceresi
-├── ControllerStarter.bat      # çift tıkla: tepsi uygulamasını başlat
-├── Status.bat                 # çift tıkla: metin teşhisi
-├── Uninstall.bat              # çift tıkla: kaldır
-├── ControllerStarterApp.ps1   # tepsi uygulaması, kurulum ve ayar arayüzü
-├── ControllerStarter.ps1      # arayüzsüz watcher
-├── src/Core.ps1               # ortak motor: XInput, Steam, durum makinesi
-├── Install.ps1                # komut satırından kurulum
-├── Uninstall.ps1              # komut satırından kaldırma
-├── ControllerStarter.exe      # derlenmiş başlatıcı (imzasız)
-├── Build-Exe.ps1              # o başlatıcıyı yeniden derler
-├── Build-Setup.ps1            # tek dosyalık kurulumu derler
-├── installer/Setup.cs         # kurulum kaynağı
-├── build/Launcher.cs          # C# kaynağı
-├── config.json                # tüm ayarlar
-├── docs/setup.png             # README'deki ekran görüntüsü
+ControllerStarter/
+├── app/                       # uygulamanın kendisi — kurulan şey bu
+│   ├── ControllerStarterApp.ps1   # tepsi uygulaması, kurulum ve ayar penceresi
+│   ├── ControllerStarter.ps1      # arayüzsüz watcher ve -Once teşhisi
+│   ├── Core.ps1                   # motor: XInput, Steam, durum makinesi
+│   ├── Install.ps1                # otomatik başlatmayı aç
+│   ├── Uninstall.ps1              # otomatik başlatmayı kapat
+│   ├── Setup.bat                  # kurulum olmadan çalıştır
+│   └── config.json                # tüm ayarlar
+├── src/                       # C# kaynakları
+│   ├── Launcher.cs                # küçük başlatıcı
+│   └── Setup.cs                   # kurulum programı
+├── build/                     # derleme betikleri
+│   ├── Build-Exe.ps1
+│   └── Build-Setup.ps1
+├── docs/setup.png
 ├── README.md                  # İngilizce sürüm
 ├── README.tr.md               # bu dosya
 └── LICENSE
@@ -216,21 +207,23 @@ Bu araç işlem kapatıyor, dolayısıyla neye dokunup neye dokunmadığı net o
 Makineni kontrol et:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Build-Exe.ps1 -CheckPolicy
+powershell -ExecutionPolicy Bypass -File .\build\Build-Exe.ps1 -CheckPolicy
 ```
 
 **On (enforcing)** diyorsa iki seçeneğin var:
 
-- **`Setup.bat` kullan.** Toplu iş dosyaları bu kısıttan etkilenmez ve sana aynı tepsi uygulamasını verir. Kapatılacak bir şey yok.
+- **`app\Setup.bat` kullan.** Toplu iş dosyaları bu kısıttan etkilenmez ve sana aynı tepsi uygulamasını verir. Kapatılacak bir şey yok.
 - **Smart App Control'ü kapat:** Windows Güvenliği → Uygulama ve tarayıcı denetimi → Akıllı Uygulama Denetimi. ⚠️ **Bu, Windows'u yeniden kurmadan geri alınamaz** ve korumayı yalnızca bu uygulama için değil, tüm sistem için kaldırır. Tek bir simgenin rahatlığıyla bunu tartarak karar ver.
 
 ### Kendin derlemek
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Build-Exe.ps1
+powershell -ExecutionPolicy Bypass -File .\build\Build-Setup.ps1
 ```
 
-Bu komut, tepsi simgesiyle aynı çizim kodundan çok boyutlu ikonu üretir, sonra `build/Launcher.cs` dosyasını .NET Framework ile gelen C# derleyicisiyle derler. Kurulacak bir şey yok ve kendin derlemediğin bir ikiliye güvenmek zorunda kalmazsın.
+Bu komut, tepsi simgesiyle aynı çizim kodundan çok boyutlu ikonu üretir, `src/Launcher.cs` dosyasını `app/ControllerStarter.exe` olarak derler, `app/` içindekileri ZIP'e paketler ve bu ZIP'i `ControllerStarterSetup.exe` içine gömer. .NET Framework ile gelen C# derleyicisini kullanır, yani kurulacak bir şey yoktur — ve kendin derlemediğin bir ikiliye güvenmek zorunda kalmazsın.
+
+`build\Build-Exe.ps1` yalnızca başlatıcıyı derler, etrafındaki kurulum programı olmadan.
 
 ## Kaldırma
 

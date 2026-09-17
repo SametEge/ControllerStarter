@@ -4,16 +4,16 @@
     Builds ControllerStarterSetup.exe, the single-file installer.
 
 .DESCRIPTION
-    Compiles the launcher, stages the application files, packs them into a ZIP,
-    and embeds that ZIP as a managed resource inside the installer executable.
-    The result needs no external files: running it extracts the application,
-    creates shortcuts and registers an entry under Programs and Features.
+    Compiles the launcher, packs everything in app\ into a ZIP, and embeds that
+    ZIP as a managed resource inside the installer executable. The result needs
+    no external files: running it extracts the application, creates shortcuts
+    and registers an entry under Programs and Features.
 
     Uses the C# compiler bundled with the .NET Framework, so nothing has to be
     installed.
 
 .PARAMETER SkipLauncher
-    Reuse the existing ControllerStarter.exe instead of rebuilding it.
+    Reuse the existing app\ControllerStarter.exe instead of rebuilding it.
 
 .NOTES
     Author : Samet Ege
@@ -27,26 +27,15 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-. (Join-Path $PSScriptRoot 'src\Core.ps1')
+$Repo = Split-Path -Parent $PSScriptRoot
 
-$Source   = Join-Path $PSScriptRoot 'installer\Setup.cs'
-$IconFile = Join-Path $PSScriptRoot 'build\app.ico'
-$Output   = Join-Path $PSScriptRoot 'ControllerStarterSetup.exe'
+. (Join-Path $Repo 'app\Core.ps1')
+
+$Source   = Join-Path $Repo 'src\Setup.cs'
+$AppDir   = Join-Path $Repo 'app'
+$IconFile = Join-Path $PSScriptRoot 'app.ico'
+$Output   = Join-Path $Repo 'ControllerStarterSetup.exe'
 $Payload  = Join-Path $env:TEMP ('cs-payload-' + [Guid]::NewGuid().ToString('N') + '.zip')
-
-# Files that make up an installed copy of the application.
-$PayloadItems = @(
-    'ControllerStarterApp.ps1',
-    'ControllerStarter.ps1',
-    'ControllerStarter.exe',
-    'Install.ps1',
-    'Uninstall.ps1',
-    'config.json',
-    'LICENSE',
-    'README.md',
-    'README.tr.md',
-    'src\Core.ps1'
-)
 
 if (-not (Test-Path -LiteralPath $Source)) { throw "Installer source not found: $Source" }
 
@@ -71,24 +60,30 @@ if (-not (Test-Path -LiteralPath $IconFile)) {
 }
 
 # --- 2. Pack the payload -----------------------------------------------
-# Built with ZipArchive rather than Compress-Archive: the latter writes entry
-# names with backslashes, which the ZIP specification does not allow.
+# Everything in app\ becomes the installed copy, packed flat. Built with
+# ZipArchive rather than Compress-Archive: the latter writes entry names with
+# backslashes, which the ZIP specification does not allow.
 Write-Host 'Packing payload...'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+$items = @(Get-ChildItem -LiteralPath $AppDir -File | Sort-Object Name)
+if ($items.Count -eq 0) { throw "Nothing to pack: $AppDir is empty." }
 
 try {
     if (Test-Path -LiteralPath $Payload) { Remove-Item -LiteralPath $Payload -Force }
 
     $archive = [System.IO.Compression.ZipFile]::Open($Payload, 'Create')
     try {
-        foreach ($item in $PayloadItems) {
-            $sourcePath = Join-Path $PSScriptRoot $item
-            if (-not (Test-Path -LiteralPath $sourcePath)) {
-                throw "Payload file missing: $item"
-            }
-
+        foreach ($item in $items) {
             [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
-                $archive, $sourcePath, ($item -replace '\\', '/'), 'Optimal')
+                $archive, $item.FullName, $item.Name, 'Optimal')
+        }
+
+        # The licence lives at the repository root but belongs with an install.
+        $license = Join-Path $Repo 'LICENSE'
+        if (Test-Path -LiteralPath $license) {
+            [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+                $archive, $license, 'LICENSE', 'Optimal')
         }
     }
     finally {
@@ -96,7 +91,8 @@ try {
     }
 
     $payloadKb = [Math]::Round((Get-Item -LiteralPath $Payload).Length / 1KB, 1)
-    Write-Host "Payload           : $($PayloadItems.Count) files, $payloadKb KB"
+    Write-Host "Payload           : $($items.Count) files, $payloadKb KB"
+    Write-Host "                    $(($items | ForEach-Object { $_.Name }) -join ', ')"
 
     # --- 3. Compile -----------------------------------------------------
     Write-Host 'Compiling installer...'
