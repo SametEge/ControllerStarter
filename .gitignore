@@ -18,3 +18,6 @@ $RECYCLE.BIN/
 .vscode/
 .idea/
 *.swp
+
+# Release artifact, attached to GitHub Releases rather than committed
+ControllerStarterSetup.exe

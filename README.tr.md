@@ -45,18 +45,23 @@ Windows'ta konsol gibi bir deneyim: kontrolcüyü eline al, oyna, bırak. Klavye
 
 ## Hızlı başlangıç
 
-1. Bu depoyu indir veya klonla.
-2. **`Setup.bat`'e çift tıkla.**
-3. *Windows başlangıcında çalıştır* kutusunu işaretle, **Kur ve Başlat**'a bas.
-4. Kontrolcünü aç.
+1. [Son sürümden](https://github.com/SametEge/ControllerStarter/releases/latest) **`ControllerStarterSetup.exe`** dosyasını indir.
+2. Çalıştır, seçeneklerini işaretle, **Kur**'a bas.
+3. Kontrolcünü aç.
 
-Yönetici hakkı gerekmez, kurulacak bir şey yok, bağımlılık yok. Kurulum penceresi aynı zamanda ayarlar penceresidir — tepsi simgesinden istediğin zaman tekrar açabilirsin.
+Kurulum tek dosyadır — uygulama içine gömülüdür. Kullanıcı bazında kurar (yönetici hakkı gerekmez), Başlat menüsüne kısayol ekler ve *Uygulamalar ve özellikler* altına kayıt düşer, yani diğer programlar gibi kaldırılır.
+
+> **Akıllı Uygulama Denetimi açık olan Windows 11'de:** kurulum dosyası imzasızdır ve Windows çalıştırmayı reddeder. Bu özelliği kapatmadan bunu aşmanın bir yolu yok — bkz. [.exe hakkında](#exe-hakkında). Kapatmak istemiyorsan depoyu klonlayıp `Setup.bat`'e çift tıkla; tamamen aynı uygulamayı verir.
+
+### Kaynaktan çalıştırmak
 
 ```bash
-git clone https://github.com/KULLANICI_ADIN/controller-starter.git
+git clone https://github.com/SametEge/ControllerStarter.git
 ```
 
-> `KULLANICI_ADIN` yerine kendi GitHub kullanıcı adını yaz.
+Sonra `Setup.bat`'e çift tıkla. Derlenecek bir şey yok, kurulacak bir şey yok.
+
+
 
 ### Başlatıcılar
 
@@ -127,6 +132,8 @@ Controller Starter/
 ├── Uninstall.ps1              # komut satırından kaldırma
 ├── ControllerStarter.exe      # derlenmiş başlatıcı (imzasız)
 ├── Build-Exe.ps1              # o başlatıcıyı yeniden derler
+├── Build-Setup.ps1            # tek dosyalık kurulumu derler
+├── installer/Setup.cs         # kurulum kaynağı
 ├── build/Launcher.cs          # C# kaynağı
 ├── config.json                # tüm ayarlar
 ├── docs/setup.png             # README'deki ekran görüntüsü

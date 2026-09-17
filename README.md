@@ -45,18 +45,23 @@ A console-like experience on Windows: pick up the controller, play, put it down.
 
 ## Quick start
 
-1. Download or clone this repository.
-2. **Double-click `Setup.bat`.**
-3. Tick *Start with Windows*, press **Install and Start**.
-4. Turn your controller on.
+1. Download **`ControllerStarterSetup.exe`** from the [latest release](https://github.com/SametEge/ControllerStarter/releases/latest).
+2. Run it, pick your options, press **Install**.
+3. Turn your controller on.
 
-No administrator rights, nothing to install, no dependencies. The setup window is also the settings window — reopen it any time from the tray icon.
+The installer is a single self-contained file — the application is embedded inside it. It installs per-user (no administrator rights), adds a Start Menu shortcut and registers an entry under *Apps & features* so it uninstalls like any other program.
+
+> **Windows 11 with Smart App Control:** the installer is unsigned and Windows will refuse to run it. There is no way around that short of turning the feature off — see [About the .exe](#about-the-exe). If you would rather not, clone the repository and double-click `Setup.bat` instead; it gives you exactly the same application.
+
+### Running from source instead
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/controller-starter.git
+git clone https://github.com/SametEge/ControllerStarter.git
 ```
 
-> Replace `YOUR_USERNAME` with your own GitHub username.
+Then double-click `Setup.bat`. Nothing to build, nothing to install.
+
+
 
 ### Launchers
 
@@ -127,6 +132,8 @@ Controller Starter/
 ├── Uninstall.ps1              # command-line uninstall
 ├── ControllerStarter.exe      # compiled launcher (unsigned)
 ├── Build-Exe.ps1              # rebuilds that launcher
+├── Build-Setup.ps1            # builds the single-file installer
+├── installer/Setup.cs         # installer source
 ├── build/Launcher.cs          # its C# source
 ├── config.json                # all settings
 ├── docs/setup.png             # screenshot used in this README
