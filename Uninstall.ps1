@@ -1,7 +1,7 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
-    Removes Controller Starter's autostart entries and stops the watcher.
+    Removes Controller Starter's autostart entries and stops the running app.
 
 .PARAMETER KeepRunning
     Remove the autostart entries but leave the current instance running.
@@ -18,40 +18,25 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$TaskName     = 'ControllerStarter'
-$ShortcutPath = Join-Path ([Environment]::GetFolderPath('Startup')) 'Controller Starter.lnk'
+. (Join-Path $PSScriptRoot 'src\Core.ps1')
+
+Initialize-ControllerStarter -Root $PSScriptRoot
 
 Write-Host ''
 Write-Host 'Controller Starter - uninstaller' -ForegroundColor Cyan
 Write-Host '--------------------------------'
 
-# Scheduled task
-try {
-    if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
-        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
-        Write-Host "Scheduled task '$TaskName' removed." -ForegroundColor Green
-    }
-    else {
-        Write-Host "No scheduled task named '$TaskName'." -ForegroundColor DarkGray
-    }
-}
-catch {
-    Write-Host "Scheduled task could not be removed: $($_.Exception.Message)" -ForegroundColor Yellow
-}
-
-# Startup shortcut
-if (Test-Path -LiteralPath $ShortcutPath) {
-    Remove-Item -LiteralPath $ShortcutPath -Force
-    Write-Host 'Startup shortcut removed.' -ForegroundColor Green
+if (Test-AutoStartEnabled) {
+    Disable-AutoStart
+    Write-Host 'Autostart removed.' -ForegroundColor Green
 }
 else {
-    Write-Host 'No Startup shortcut.' -ForegroundColor DarkGray
+    Write-Host 'Autostart was not enabled.' -ForegroundColor DarkGray
 }
 
-# Running instance
 if (-not $KeepRunning) {
     $running = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
-                    Where-Object { $_.CommandLine -and $_.CommandLine -like '*ControllerStarter.ps1*' })
+                    Where-Object { $_.CommandLine -and $_.CommandLine -like '*ControllerStarter*' })
 
     if ($running.Count -eq 0) {
         Write-Host 'Controller Starter is not running.' -ForegroundColor DarkGray

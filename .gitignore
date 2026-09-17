@@ -3,6 +3,10 @@ logs/
 *.log
 *.log.1
 
+# Locally built launcher (see Build-Exe.ps1) - unsigned binaries are not committed
+*.exe
+*.pdb
+
 # Local overrides (copy config.json and edit if you prefer keeping yours private)
 config.local.json
 

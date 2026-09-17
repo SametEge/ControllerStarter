@@ -1,21 +1,17 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
-    Registers Controller Starter so it runs automatically at logon.
+    Command-line install: enables autostart and launches the tray app.
 
 .DESCRIPTION
-    Two installation methods are supported:
+    The usual way to install is Setup.bat, which offers the same choices in a
+    window. This script exists for unattended or scripted setups.
 
-      Task    - a Scheduled Task triggered at logon (preferred: survives
-                restarts cleanly, runs hidden, no console flash).
-      Startup - a shortcut in the user's Startup folder (no special rights
-                required; used automatically when the task cannot be created).
-
-.PARAMETER Method
-    Auto (default), Task or Startup.
+.PARAMETER NoAutoStart
+    Start the tray app now, but do not register it to run at logon.
 
 .PARAMETER NoStart
-    Register only; do not start the watcher right away.
+    Register autostart only; do not launch the app right away.
 
 .NOTES
     Author : Samet Ege
@@ -23,106 +19,61 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('Auto', 'Task', 'Startup')]
-    [string]$Method = 'Auto',
+    [switch]$NoAutoStart,
     [switch]$NoStart
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$TaskName   = 'ControllerStarter'
-$Root       = $PSScriptRoot
-$ScriptPath = Join-Path $Root 'ControllerStarter.ps1'
-$ShortcutPath = Join-Path ([Environment]::GetFolderPath('Startup')) 'Controller Starter.lnk'
-$PowerShellExe = Join-Path $PSHOME 'powershell.exe'
-$Arguments = '-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "{0}"' -f $ScriptPath
+. (Join-Path $PSScriptRoot 'src\Core.ps1')
 
-if (-not (Test-Path -LiteralPath $ScriptPath)) {
-    throw "ControllerStarter.ps1 not found next to this installer: $ScriptPath"
-}
+Initialize-ControllerStarter -Root $PSScriptRoot
 
-function Install-AsScheduledTask {
-    $action = New-ScheduledTaskAction -Execute $PowerShellExe -Argument $Arguments -WorkingDirectory $Root
+$AppScript  = Join-Path $PSScriptRoot 'ControllerStarterApp.ps1'
+$PowerShell = Join-Path $PSHOME 'powershell.exe'
+$Arguments  = '-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "{0}"' -f $AppScript
 
-    $trigger = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME"
-    $trigger.Delay = 'PT15S'   # let the desktop settle before polling
-
-    $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" `
-                                            -LogonType Interactive `
-                                            -RunLevel Limited
-
-    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries `
-                                             -DontStopIfGoingOnBatteries `
-                                             -StartWhenAvailable `
-                                             -DontStopOnIdleEnd `
-                                             -MultipleInstances IgnoreNew `
-                                             -ExecutionTimeLimit ([TimeSpan]::Zero)
-
-    Register-ScheduledTask -TaskName $TaskName `
-                           -Action $action `
-                           -Trigger $trigger `
-                           -Principal $principal `
-                           -Settings $settings `
-                           -Description 'Launches Steam when an Xbox controller connects and closes the game plus Steam when it disconnects. (github.com/sametege)' `
-                           -Force | Out-Null
-}
-
-function Install-AsStartupShortcut {
-    $shell    = New-Object -ComObject WScript.Shell
-    $shortcut = $shell.CreateShortcut($ShortcutPath)
-    $shortcut.TargetPath       = $PowerShellExe
-    $shortcut.Arguments        = $Arguments
-    $shortcut.WorkingDirectory = $Root
-    $shortcut.WindowStyle      = 7          # minimized; the script hides itself right after
-    $shortcut.Description      = 'Controller Starter'
-    $shortcut.Save()
+if (-not (Test-Path -LiteralPath $AppScript)) {
+    throw "ControllerStarterApp.ps1 not found next to this installer: $AppScript"
 }
 
 Write-Host ''
 Write-Host 'Controller Starter - installer' -ForegroundColor Cyan
 Write-Host '------------------------------'
-Write-Host "Script : $ScriptPath"
+Write-Host "App    : $AppScript"
+Write-Host "Steam  : $(if ($Global:CS.SteamExe) { $Global:CS.SteamExe } else { 'NOT FOUND' })"
 
-$installed = $null
-
-if ($Method -in @('Auto', 'Task')) {
-    try {
-        Install-AsScheduledTask
-        $installed = 'Task'
-        Write-Host "Installed as scheduled task '$TaskName' (runs at logon)." -ForegroundColor Green
-    }
-    catch {
-        if ($Method -eq 'Task') { throw }
-        Write-Host "Scheduled task could not be created ($($_.Exception.Message))." -ForegroundColor Yellow
-        Write-Host 'Falling back to the Startup folder.' -ForegroundColor Yellow
-    }
+if ($NoAutoStart) {
+    Write-Host 'Autostart skipped (-NoAutoStart).' -ForegroundColor DarkGray
 }
-
-if (-not $installed) {
-    Install-AsStartupShortcut
-    $installed = 'Startup'
-    Write-Host "Installed as a Startup shortcut: $ShortcutPath" -ForegroundColor Green
+else {
+    $method = Enable-AutoStart -TargetScript $AppScript
+    if ($method -eq 'Task') {
+        Write-Host "Autostart enabled via scheduled task 'ControllerStarter'." -ForegroundColor Green
+    }
+    else {
+        Write-Host 'Autostart enabled via a Startup folder shortcut.' -ForegroundColor Green
+    }
 }
 
 if (-not $NoStart) {
-    $running = Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
-                   Where-Object { $_.CommandLine -and $_.CommandLine -like '*ControllerStarter.ps1*' }
+    $running = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
+                    Where-Object { $_.CommandLine -and $_.CommandLine -like '*ControllerStarter*' })
 
-    if ($running) {
+    if ($running.Count -gt 0) {
         Write-Host 'Controller Starter is already running.' -ForegroundColor Yellow
     }
     else {
-        Start-Process -FilePath $PowerShellExe `
+        Start-Process -FilePath $PowerShell `
                       -ArgumentList $Arguments `
-                      -WorkingDirectory $Root `
+                      -WorkingDirectory $PSScriptRoot `
                       -WindowStyle Hidden | Out-Null
-        Write-Host 'Controller Starter started.' -ForegroundColor Green
+        Write-Host 'Controller Starter started (look for the tray icon).' -ForegroundColor Green
     }
 }
 
 Write-Host ''
 Write-Host 'Done. Turn your controller on to test it.'
-Write-Host "Logs : $(Join-Path $Root 'logs\controller-starter.log')"
-Write-Host 'Uninstall with: .\Uninstall.ps1'
+Write-Host "Logs : $($Global:CS.LogFile)"
 Write-Host ''

@@ -1,209 +1,219 @@
 # Controller Starter
 
-Xbox kontrolcünü açtığında **Steam otomatik açılır**, kontrolcüyü kapattığında **açık olan oyun ve Steam otomatik kapanır.**
+**Turn your Xbox controller on — Steam opens. Turn it off — the game and Steam close.**
 
-Konsol gibi bir deneyim: kontrolcüyü aç, oyna, kapat. Klavye ve fareye dokunmana gerek yok.
+A console-like experience on Windows: pick up the controller, play, put it down. No keyboard, no mouse. Lives quietly in the notification area.
+
+🇬🇧 English · [🇹🇷 Türkçe](README.tr.md)
 
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6)
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE)
 ![License](https://img.shields.io/badge/license-MIT-green)
+![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
+
+<p align="center">
+  <img src="docs/setup.png" alt="Controller Starter setup window" width="440">
+</p>
 
 ---
 
-## İçindekiler
+## Contents
 
-- [Ne yapıyor?](#ne-yapıyor)
-- [Nasıl çalışıyor?](#nasıl-çalışıyor)
-- [Gereksinimler](#gereksinimler)
-- [Kurulum](#kurulum)
-- [Test etme](#test-etme)
-- [Ayarlar](#ayarlar)
-- [Sık karşılaşılan durumlar](#sık-karşılaşılan-durumlar)
-- [Güvenlik notu](#güvenlik-notu)
-- [Kaldırma](#kaldırma)
-- [Lisans](#lisans)
+- [What it does](#what-it-does)
+- [Quick start](#quick-start)
+- [The tray icon](#the-tray-icon)
+- [How it works](#how-it-works)
+- [Requirements](#requirements)
+- [Files](#files)
+- [Configuration](#configuration)
+- [Troubleshooting](#troubleshooting)
+- [Safety](#safety)
+- [About the .exe](#about-the-exe)
+- [Uninstalling](#uninstalling)
+- [License](#license)
 
 ---
 
-## Ne yapıyor?
+## What it does
 
-| Olay | Sonuç |
+| Event | Result |
 |---|---|
-| Kontrolcü bağlandı (Bluetooth, USB veya Xbox Wireless Adapter) | Steam açılır — varsayılan olarak **Big Picture** modunda |
-| Kontrolcü kapandı / bağlantısı koptu | Önce açık Steam oyunu nazikçe kapatılır, sonra Steam kapatılır |
-| Kontrolcü kısa süreliğine koptu (sinyal dalgalanması) | Hiçbir şey olmaz — geri gelirse oyun kapanmaz |
-| Steam'i kendin kapattın, kontrolcü hâlâ açık | Steam tekrar açılmaz; kontrolcüyü kapatıp açman beklenir |
+| Controller connects (Bluetooth, USB or Xbox Wireless Adapter) | Steam launches — in **Big Picture** mode by default |
+| Controller turns off or drops out | The running Steam game is closed gracefully, then Steam shuts down |
+| Controller blips out for a moment | Nothing happens — if it comes back within the grace period, your game keeps running |
+| You quit Steam yourself while the controller is still on | Steam is not relaunched; the tool waits for you to cycle the controller |
 
-Windows başlangıcında sessizce çalışır, arka planda pencere göstermez.
+## Quick start
 
-## Nasıl çalışıyor?
+1. Download or clone this repository.
+2. **Double-click `Setup.bat`.**
+3. Tick *Start with Windows*, press **Install and Start**.
+4. Turn your controller on.
 
-Kontrolcü algılama **XInput** üzerinden yapılır (`XInputGetState`). Cihaz listesi taramak yerine Windows'a doğrudan "şu anda bağlı bir gamepad var mı?" diye sorar — kontrolcü uykuya geçtiğinde veya pili bittiğinde de bunu anında görür.
-
-Betik küçük bir durum makinesi ile çalışır:
-
-```
-Waiting   ── kontrolcü 2 sn boyunca bağlı ─────────►  Steam açılır  ──►  Active
-Active    ── kontrolcü 20 sn boyunca yok ──────────►  oyun + Steam kapanır  ──►  Waiting
-Active    ── Steam'i kullanıcı kapattı ────────────►  Suspended
-Suspended ── kontrolcü kapalı ─────────────────────►  Waiting  (tekrar hazır)
-```
-
-`Suspended` durumu şunun için var: Steam'den kendi isteğinle çıktığında, kontrolcü hâlâ açık olduğu için Steam'in anında yeniden açılmasını engeller.
-
-**Oyun tespiti:** Kapatılacak oyunlar, çalışan işlemler arasından yolu bir Steam kütüphanesinin `steamapps\common\` klasörünün altında olanlardan seçilir. Kütüphane yolları `libraryfolders.vdf` dosyasından okunur, yani ikinci/üçüncü diskteki oyunlar da bulunur. Bu klasörlerin dışındaki hiçbir işleme dokunulmaz.
-
-**Kapatma sırası:** Önce `CloseMainWindow()` ile pencere kapatma isteği gönderilir (oyun kaydını yapabilsin diye), 15 saniye beklenir, hâlâ açıksa zorla sonlandırılır. Steam için `steam.exe -shutdown` kullanılır — bu Steam'in kendi temiz kapanma yoludur.
-
-## Gereksinimler
-
-- Windows 10 veya 11
-- Windows PowerShell 5.1 (Windows ile birlikte gelir, ayrıca kurulum gerekmez)
-- Steam
-- XInput uyumlu bir kontrolcü (Xbox One, Xbox Series, Xbox 360 ve XInput taklidi yapan çoğu üçüncü parti kontrolcü)
-
-> **Not:** DualShock / DualSense gibi kontrolcüler XInput ile görünmez. DS4Windows ya da Steam Input gibi bir katman kullanıyorsan çalışır.
-
-## Kurulum
+No administrator rights, nothing to install, no dependencies. The setup window is also the settings window — reopen it any time from the tray icon.
 
 ```bash
-git clone https://github.com/KULLANICI_ADIN/controller-starter.git
+git clone https://github.com/YOUR_USERNAME/controller-starter.git
 ```
 
-> `KULLANICI_ADIN` yerine kendi GitHub kullanıcı adını yaz.
+> Replace `YOUR_USERNAME` with your own GitHub username.
 
-Klasörü istediğin yere koy, sonra PowerShell'de o klasörün içinde:
+### Launchers
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\Install.ps1
+| File | What it does |
+|---|---|
+| **`Setup.bat`** | Opens the setup window: options, autostart choice, install and start. **Start here.** |
+| **`ControllerStarter.bat`** | Starts the tray app without touching your settings. |
+| **`Status.bat`** | Text diagnostics in a console window. |
+| **`Uninstall.bat`** | Removes autostart and stops the app. |
+
+## The tray icon
+
+Controller Starter sits in the notification area next to the clock. The icon colour tells you what it is doing:
+
+| Icon | Meaning |
+|---|---|
+| 🟢 Green | A game session is active — Steam was launched for your controller |
+| ⚪ Grey | Armed and waiting for a controller |
+| 🟠 Amber | On hold (you quit Steam yourself, or the app is paused) — cycle the controller to re-arm |
+
+**Right-click** for settings, the log file, pause/resume and exit. **Double-click** to open settings directly.
+
+> Windows hides new tray icons by default. Click the **˄** arrow next to the clock, then drag the gamepad icon down onto the taskbar to pin it permanently.
+
+## How it works
+
+Controller detection goes through **XInput** (`XInputGetState`) rather than scanning device lists. Windows is asked directly "is a gamepad connected right now?", so a controller going to sleep or running out of battery registers immediately.
+
+The watcher is a small state machine:
+
+```
+Waiting   ── controller present 2s ───────────►  launch Steam  ──►  Active
+Active    ── controller absent 20s ───────────►  close game + Steam  ──►  Waiting
+Active    ── user quit Steam ─────────────────►  Suspended
+Suspended ── controller off ──────────────────►  Waiting  (armed again)
 ```
 
-Kurulum betiği şunları yapar:
+The `Suspended` state exists so that quitting Steam by hand — while the controller is still on — does not immediately relaunch it in a loop.
 
-1. Oturum açıldığında çalışan bir **Zamanlanmış Görev** (`ControllerStarter`) oluşturur.
-2. Görev oluşturulamazsa otomatik olarak **Başlangıç klasörüne** bir kısayol koyar.
-3. Watcher'ı hemen başlatır.
+**Game detection.** A process is treated as a game only when its executable lives under a Steam library's `steamapps\common\` folder. Library paths are read from `libraryfolders.vdf`, so games on a second or third drive are found too.
 
-Yönetici hakkı gerekmez. Zorla bir yöntem seçmek istersen:
+**Shutdown order.** Games first get a `CloseMainWindow()` request so they can save, then 15 seconds to comply, then a forced terminate. Steam is closed with `steam.exe -shutdown`, which is Valve's own clean-exit path.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\Install.ps1 -Method Startup
-```
+## Requirements
 
-## Test etme
+- Windows 10 or 11
+- Windows PowerShell 5.1 — ships with Windows, nothing to install
+- Steam
+- An XInput-compatible controller: Xbox One, Xbox Series, Xbox 360, and most third-party pads that present themselves as XInput devices
 
-Her şeyin doğru algılandığını tek komutla görebilirsin:
+> DualShock and DualSense controllers are not XInput devices and will not be seen directly. They work if you run them through a translation layer such as DS4Windows or Steam Input.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\ControllerStarter.ps1 -Once
-```
-
-Örnek çıktı:
+## Files
 
 ```
-Controller Starter - status
----------------------------
-Controller connected : True
-Pads detected        : 1
-XInput backend       : xinput1_4.dll
-Steam executable     : C:\Program Files (x86)\Steam\steam.exe
-Steam running        : False
-Game folders         : c:\program files (x86)\steam\steamapps\common\
-Detected games       : (none)
+Controller Starter/
+├── Setup.bat                  # double-click: setup window
+├── ControllerStarter.bat      # double-click: start the tray app
+├── Status.bat                 # double-click: text diagnostics
+├── Uninstall.bat              # double-click: remove
+├── ControllerStarterApp.ps1   # tray app, setup and settings UI
+├── ControllerStarter.ps1      # headless watcher (no UI)
+├── src/Core.ps1               # shared engine: XInput, Steam, state machine
+├── Install.ps1                # command-line install
+├── Uninstall.ps1              # command-line uninstall
+├── Build-Exe.ps1              # optional launcher build
+├── build/Launcher.cs          # source for that launcher
+├── config.json                # all settings
+├── docs/setup.png             # screenshot used in this README
+├── README.md                  # this file
+├── README.tr.md               # Turkish version
+└── LICENSE
 ```
 
-Pencereyi görerek canlı izlemek için:
+## Configuration
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\ControllerStarter.ps1 -NoHide
-```
+Most settings are in the setup/settings window. `config.json` holds the full set, including a few that have no checkbox:
 
-Arka planda çalışırken olan biten `logs\controller-starter.log` dosyasına yazılır.
-
-## Ayarlar
-
-Tüm ayarlar `config.json` içinde. Değiştirdikten sonra watcher'ı yeniden başlat (`Uninstall.ps1` sonra `Install.ps1`, ya da bilgisayarı yeniden başlat).
-
-| Anahtar | Varsayılan | Açıklama |
+| Key | Default | Meaning |
 |---|---|---|
-| `steamExePath` | `""` | Boşsa Steam kayıt defterinden bulunur. Gerekirse tam yol yaz. |
-| `steamLaunchArgs` | `["-bigpicture"]` | Steam'e verilecek parametreler. Normal pencerede açılsın istersen `[]` yap. |
-| `pollIntervalSeconds` | `2` | Kontrolcü durumunun kaç saniyede bir kontrol edileceği. |
-| `connectDebounceSeconds` | `2` | Steam açılmadan önce kontrolcünün kaç saniye bağlı kalması gerektiği. |
-| `disconnectGraceSeconds` | `20` | **Önemli.** Bağlantı koptuktan sonra kapatmadan önce beklenecek süre. |
-| `launchIfControllerAlreadyConnectedAtStartup` | `false` | Windows açılırken kontrolcü zaten bağlıysa Steam açılsın mı? |
-| `closeGamesOnDisconnect` | `true` | Bağlantı kesilince oyun kapatılsın mı? |
-| `closeSteamOnDisconnect` | `true` | Bağlantı kesilince Steam kapatılsın mı? |
-| `closeSteamOnlyIfLaunchedByThisTool` | `false` | `true` ise, Steam'i sen açtıysan ona dokunulmaz. |
-| `gracefulCloseTimeoutSeconds` | `15` | Oyun kendi kapanmazsa zorla kapatılmadan önce beklenecek süre. |
-| `steamShutdownTimeoutSeconds` | `30` | Steam temiz kapanmazsa zorla kapatılmadan önce beklenecek süre. |
-| `extraGameProcessNames` | `[]` | Steam kütüphanesi dışındaki oyunlar için exe adları, ör. `["RiotClientServices.exe"]`. |
-| `ignoreProcessNames` | Steam yardımcıları | Asla kapatılmayacak işlem adları. |
-| `logEnabled` | `true` | Dosyaya log yazılsın mı? |
-| `logMaxSizeKB` | `1024` | Log dosyası bu boyutu aşınca döndürülür. |
+| `language` | `"auto"` | UI language: `auto`, `tr` or `en`. `auto` follows your Windows language. |
+| `steamExePath` | `""` | Empty means auto-detect from the registry. |
+| `steamLaunchArgs` | `["-bigpicture"]` | Arguments passed to Steam. `[]` gives a normal Steam window. |
+| `pollIntervalSeconds` | `2` | How often controller state is checked. |
+| `connectDebounceSeconds` | `2` | How long the controller must stay connected before Steam launches. |
+| `disconnectGraceSeconds` | `20` | **Important.** How long to wait after a dropout before closing anything. |
+| `launchIfControllerAlreadyConnectedAtStartup` | `false` | Launch Steam if the controller is already on when Windows starts? |
+| `closeGamesOnDisconnect` | `true` | Close the running game on disconnect? |
+| `closeSteamOnDisconnect` | `true` | Close Steam on disconnect? |
+| `closeSteamOnlyIfLaunchedByThisTool` | `false` | When `true`, a Steam you started yourself is left alone. |
+| `gracefulCloseTimeoutSeconds` | `15` | Grace given to a game before it is force-terminated. |
+| `steamShutdownTimeoutSeconds` | `30` | Grace given to Steam before it is force-terminated. |
+| `showNotifications` | `true` | Show balloon notifications. |
+| `extraGameProcessNames` | `[]` | Extra executables to close, e.g. `["RiotClientServices.exe"]`. |
+| `ignoreProcessNames` | Steam helpers | Processes that must never be touched. |
+| `logEnabled` | `true` | Write a log file? |
+| `logMaxSizeKB` | `1024` | Rotate the log once it grows past this. |
 
-### Önerdiğim ayarlamalar
+### Settings worth changing
 
-**Xbox kontrolcüsü 15 dakika hareketsiz kalınca kendini kapatır.** Uzun ara verdiğinde oyunun kapanmasını istemiyorsan `disconnectGraceSeconds` değerini yükselt:
+**An Xbox controller powers itself off after 15 minutes of inactivity.** If you do not want a long break to close your game, raise the wait time in the settings window, or:
 
 ```json
 "disconnectGraceSeconds": 90
 ```
 
-Sadece Steam kapansın, oyun açık kalsın istersen:
+## Troubleshooting
 
-```json
-"closeGamesOnDisconnect": false
-```
+**Steam opens when I plug the controller in just to charge it.**
+A cabled controller reports itself as connected through XInput and there is no way to tell charging apart from playing. `launchIfControllerAlreadyConnectedAtStartup` is `false` by default so this never happens at boot; raising `connectDebounceSeconds` filters out short plug-ins while running.
 
-Big Picture yerine normal Steam penceresi istersen:
+**My controller slept mid-game and the game closed.**
+Raise the wait time — see above.
 
-```json
-"steamLaunchArgs": []
-```
+**Steam does not launch.**
+Open the settings window and check the `Steam` line under *Status*. If it says *Not found*, pick `steam.exe` with the Browse button.
 
-## Sık karşılaşılan durumlar
+**The controller is not detected.**
+If the status line says *Not connected* with the pad switched on, XInput cannot see it. Check whether Windows lists it in `joy.cpl`.
 
-**Kontrolcüyü şarj etmek için USB'ye taktığımda Steam açılıyor.**
-Kabloyla bağlı kontrolcü XInput'ta "bağlı" görünür, ayırt etmenin bir yolu yok. `launchIfControllerAlreadyConnectedAtStartup` zaten `false` olduğu için Windows açılışında sorun olmaz; çalışırken takarsan `connectDebounceSeconds` değerini yükseltmek kısa denemeleri filtreler.
+**I cannot find the tray icon.**
+Click the **˄** arrow next to the clock. Drag the gamepad icon onto the taskbar to pin it.
 
-**Oyun ortasında kontrolcü uyudu ve oyun kapandı.**
-`disconnectGraceSeconds` değerini yükselt (yukarıdaki öneriye bak).
+**Steam hangs on "Steam is shutting down".**
+Expected; it is force-closed once `steamShutdownTimeoutSeconds` (default 30) elapses. Raise it if you often have downloads in flight.
 
-**Steam açılmıyor.**
-`-Once` ile çalıştırıp `Steam executable` satırına bak. `NOT FOUND` yazıyorsa `config.json` içinde `steamExePath` alanına tam yolu yaz.
+## Safety
 
-**Kontrolcü algılanmıyor.**
-`-Once` çıktısında `Pads detected: 0` görüyorsan kontrolcü XInput'a ulaşmıyor demektir. Windows'un "Oyun kumandalarını kur" ekranında (`joy.cpl`) görünüyor mu kontrol et.
+This tool terminates processes, so here is exactly what it will and will not touch:
 
-**Steam kapanırken "Steam is shutting down" takılı kalıyor.**
-Normal; `steamShutdownTimeoutSeconds` (varsayılan 30 sn) dolunca zorla kapatılır. İndirme sürüyorsa bu süreyi uzatmak isteyebilirsin.
+- Only processes whose executable path sits under a Steam library's `steamapps\common\` folder are closed.
+- The single exception is `extraGameProcessNames`, which **you** populate in `config.json`.
+- Closing is always attempted politely first; forced termination only happens after a timeout.
+- No administrator rights are requested, no system settings are changed, no network connections are made.
 
-**Betik çalışıyor mu nasıl anlarım?**
+Unsaved progress can still be lost, especially in games without autosave. Tune the wait time to match how you actually play.
 
-```powershell
-Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -like '*ControllerStarter*' }
-```
+## About the .exe
 
-## Güvenlik notu
+Controller Starter ships as PowerShell rather than a compiled binary, and that is a deliberate choice rather than a missing feature.
 
-Bu araç işlem kapatıyor, dolayısıyla neye dokunduğu net olsun:
-
-- Yalnızca yolu bir Steam kütüphanesinin `steamapps\common\` klasörü altında olan işlemler kapatılır.
-- Bunun tek istisnası, `config.json` içine **senin** eklediğin `extraGameProcessNames` listesidir.
-- Kapatma her zaman önce nazik yoldan denenir; zorla sonlandırma yalnızca zaman aşımından sonra devreye girer.
-- Yönetici hakkı istenmez, sistem ayarı değiştirilmez, ağ bağlantısı kurulmaz.
-
-Kaydedilmemiş oyun ilerlemesi kaybolabilir — özellikle otomatik kayıt yapmayan oyunlarda. Bunu göz önünde bulundurarak `disconnectGraceSeconds` süresini kendine göre ayarla.
-
-## Kaldırma
+A launcher executable can be built from source at any time:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Uninstall.ps1
+powershell -ExecutionPolicy Bypass -File .\Build-Exe.ps1
 ```
 
-Zamanlanmış görevi, başlangıç kısayolunu ve çalışan örneği kaldırır. Proje klasörüne dokunmaz.
+This compiles `build/Launcher.cs` into `ControllerStarter.exe` with the C# compiler bundled in the .NET Framework — nothing to install.
 
-## Lisans
+> **The catch:** the result is an *unsigned* executable. Windows 11 with **Smart App Control** enabled blocks unsigned binaries outright — the file simply refuses to run, with "Application Control policy blocked this file". Code signing requires a certificate from a trusted CA. The `.bat` launchers are not subject to this, which is why they are the supported path.
+
+No prebuilt binary is committed to this repository on purpose — you should not have to trust an executable you did not build.
+
+## Uninstalling
+
+Double-click `Uninstall.bat`, or untick *Start with Windows* in the settings window and choose **Exit** from the tray menu. The project folder is left untouched.
+
+## License
 
 [MIT](LICENSE) — Samet Ege
