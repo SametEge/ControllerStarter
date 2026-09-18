@@ -61,6 +61,7 @@ $Texts = @{
         LangTr         = 'Türkçe'
         LangEn         = 'English'
         AutoStart      = 'Windows başlangıcında çalıştır'
+        AutoStartHint  = "Windows'un Başlangıç uygulamaları listesinde de görünür."
         BigPicture     = "Steam'i Big Picture modunda aç"
         CloseGames     = 'Bağlantı kesilince oyunu kapat'
         CloseSteam     = "Bağlantı kesilince Steam'i kapat"
@@ -107,6 +108,7 @@ $Texts = @{
         LangTr         = 'Türkçe'
         LangEn         = 'English'
         AutoStart      = 'Start with Windows'
+        AutoStartHint  = "Also listed under Windows' Startup apps, where you can switch it off."
         BigPicture     = 'Open Steam in Big Picture mode'
         CloseGames     = 'Close the game on disconnect'
         CloseSteam     = 'Close Steam on disconnect'
@@ -175,7 +177,7 @@ function Show-SettingsDialog {
 
     $form                 = New-Object System.Windows.Forms.Form
     $form.Text            = if ($IsSetup) { $T.SetupTitle } else { $T.SettingsTitle }
-    $form.Size            = New-Object System.Drawing.Size(470, 600)
+    $form.Size            = New-Object System.Drawing.Size(470, 618)
     $form.FormBorderStyle = 'FixedDialog'
     $form.MaximizeBox     = $false
     $form.MinimizeBox     = $false
@@ -283,7 +285,15 @@ function Show-SettingsDialog {
     }
 
     $chkAutoStart = New-Check $T.AutoStart (Test-AutoStartEnabled) $y
-    $form.Controls.Add($chkAutoStart); $y += 26
+    $form.Controls.Add($chkAutoStart); $y += 22
+
+    $autoStartHint           = New-Object System.Windows.Forms.Label
+    $autoStartHint.Text      = $T.AutoStartHint
+    $autoStartHint.Font      = $fontHint
+    $autoStartHint.ForeColor = $muted
+    $autoStartHint.Location  = New-Object System.Drawing.Point(45, $y)
+    $autoStartHint.Size      = New-Object System.Drawing.Size(390, 18)
+    $form.Controls.Add($autoStartHint); $y += 22
 
     $chkBigPicture = New-Check $T.BigPicture (@($Global:CS.Config.steamLaunchArgs) -contains '-bigpicture') $y
     $form.Controls.Add($chkBigPicture); $y += 26
@@ -359,7 +369,7 @@ function Show-SettingsDialog {
     # --- Buttons -------------------------------------------------------
     $ok          = New-Object System.Windows.Forms.Button
     $ok.Text     = if ($IsSetup) { $T.InstallRun } else { $T.Save }
-    $ok.Location = New-Object System.Drawing.Point(232, 513)
+    $ok.Location = New-Object System.Drawing.Point(232, 531)
     $ok.Size     = New-Object System.Drawing.Size(120, 32)
     $ok.DialogResult = [System.Windows.Forms.DialogResult]::OK
     $form.Controls.Add($ok)
@@ -367,7 +377,7 @@ function Show-SettingsDialog {
 
     $cancel          = New-Object System.Windows.Forms.Button
     $cancel.Text     = $T.Cancel
-    $cancel.Location = New-Object System.Drawing.Point(360, 513)
+    $cancel.Location = New-Object System.Drawing.Point(360, 531)
     $cancel.Size     = New-Object System.Drawing.Size(74, 32)
     $cancel.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
     $form.Controls.Add($cancel)

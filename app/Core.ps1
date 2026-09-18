@@ -840,74 +840,141 @@ function Invoke-WatcherTick {
 # Autostart registration
 # ---------------------------------------------------------------------------
 
-$Global:CSTaskName = 'ControllerStarter'
+$Global:CSTaskName     = 'ControllerStarter'
+$Global:CSShortcutName = 'Controller Starter.lnk'
 
 function Get-StartupShortcutPath {
-    Join-Path ([Environment]::GetFolderPath('Startup')) 'Controller Starter.lnk'
+    Join-Path ([Environment]::GetFolderPath('Startup')) $Global:CSShortcutName
+}
+
+function Test-StartupShortcutApproved {
+    <#
+        Windows lets the user switch a startup entry off from Task Manager and
+        from Settings without deleting it, and records that choice here: a
+        first byte with the low bit set means disabled. Reading it keeps our
+        own checkbox honest about what will actually happen at logon.
+    #>
+    try {
+        $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder'
+        $entry = Get-ItemProperty -Path $key -Name $Global:CSShortcutName -ErrorAction Stop
+        $value = $entry.$($Global:CSShortcutName)
+        if ($value -is [byte[]] -and $value.Length -gt 0) { return ($value[0] -band 1) -eq 0 }
+        return $true
+    }
+    catch {
+        # No record means the user has never touched it, so it is enabled.
+        return $true
+    }
+}
+
+function Clear-StartupShortcutDisabledMark {
+    # Without this, re-ticking our checkbox would recreate a shortcut that
+    # Windows still considers switched off.
+    try {
+        $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder'
+        if (Test-Path -LiteralPath $key) {
+            Remove-ItemProperty -Path $key -Name $Global:CSShortcutName -ErrorAction SilentlyContinue
+        }
+    }
+    catch { }
 }
 
 function Test-AutoStartEnabled {
-    try {
-        if (Get-ScheduledTask -TaskName $Global:CSTaskName -ErrorAction SilentlyContinue) { return $true }
+    if (-not (Test-Path -LiteralPath (Get-StartupShortcutPath))) {
+        # An install from before the move to Startup-folder shortcuts.
+        try {
+            if (Get-ScheduledTask -TaskName $Global:CSTaskName -ErrorAction SilentlyContinue) { return $true }
+        }
+        catch { }
+        return $false
     }
-    catch { }
-    return (Test-Path -LiteralPath (Get-StartupShortcutPath))
+    return (Test-StartupShortcutApproved)
+}
+
+function Test-UnsignedExecutablesAllowed {
+    <#
+        Smart App Control refuses to run unsigned executables. Where it is
+        enforcing, pointing autostart at our own unsigned launcher would mean
+        the application silently never starts, so PowerShell is used instead.
+    #>
+    try {
+        $state = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy' `
+                    -Name VerifiedAndReputablePolicyState -ErrorAction Stop).VerifiedAndReputablePolicyState
+        return ($state -ne 1)
+    }
+    catch {
+        # The value is absent on builds without Smart App Control.
+        return $true
+    }
+}
+
+function Get-AutoStartIconPath {
+    # The shortcut needs an icon file on disk. The launcher carries one when it
+    # has been built; otherwise generate the same artwork next to the app.
+    $launcher = Join-Path $Global:CS.Root 'ControllerStarter.exe'
+    if (Test-Path -LiteralPath $launcher) { return $launcher }
+
+    $ico = Join-Path $Global:CS.Root 'app.ico'
+    if (-not (Test-Path -LiteralPath $ico)) {
+        try { [void](Save-GamepadIcoFile -Path $ico) } catch { return $null }
+    }
+    return $ico
 }
 
 function Enable-AutoStart {
     <#
-        Registers a logon task pointing at the tray app, falling back to a
-        Startup-folder shortcut when the task cannot be created.
+        Creates a shortcut in the Startup folder. Windows lists those under
+        Task Manager > Startup apps and Settings > Apps > Startup, named after
+        the shortcut, so autostart can be seen and switched off from the
+        interface people already know. A scheduled task, which this used to
+        create, appears in neither.
+
+        The shortcut points at the launcher wherever that can run. Besides
+        being what Windows expects, it avoids a startup entry that launches a
+        hidden PowerShell, which is how malware commonly persists and which
+        behavioural antivirus engines block on sight.
     #>
     param([string]$TargetScript)
 
     if (-not $TargetScript) { $TargetScript = Join-Path $Global:CS.Root 'ControllerStarterApp.ps1' }
 
-    $powershell = Join-Path $PSHOME 'powershell.exe'
-    $arguments  = '-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "{0}"' -f $TargetScript
-
+    # Remove the scheduled task left by earlier versions, so autostart does not
+    # happen twice.
     try {
-        $action = New-ScheduledTaskAction -Execute $powershell -Argument $arguments -WorkingDirectory $Global:CS.Root
-
-        $trigger = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME"
-        $trigger.Delay = 'PT15S'   # let the desktop settle before polling
-
-        $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" `
-                                                -LogonType Interactive `
-                                                -RunLevel Limited
-
-        $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries `
-                                                 -DontStopIfGoingOnBatteries `
-                                                 -StartWhenAvailable `
-                                                 -DontStopOnIdleEnd `
-                                                 -MultipleInstances IgnoreNew `
-                                                 -ExecutionTimeLimit ([TimeSpan]::Zero)
-
-        Register-ScheduledTask -TaskName $Global:CSTaskName `
-                               -Action $action `
-                               -Trigger $trigger `
-                               -Principal $principal `
-                               -Settings $settings `
-                               -Description 'Launches Steam when an Xbox controller connects and closes the game plus Steam when it disconnects.' `
-                               -Force | Out-Null
-
-        Write-Log "Autostart enabled (scheduled task '$Global:CSTaskName')."
-        return 'Task'
+        if (Get-ScheduledTask -TaskName $Global:CSTaskName -ErrorAction SilentlyContinue) {
+            Unregister-ScheduledTask -TaskName $Global:CSTaskName -Confirm:$false
+            Write-Log "Removed the legacy scheduled task '$Global:CSTaskName'."
+        }
     }
-    catch {
-        Write-Log "Scheduled task could not be created, using Startup folder: $($_.Exception.Message)" 'WARN'
-    }
+    catch { }
+
+    $launcher    = Join-Path $Global:CS.Root 'ControllerStarter.exe'
+    $useLauncher = (Test-Path -LiteralPath $launcher) -and (Test-UnsignedExecutablesAllowed)
 
     $shell    = New-Object -ComObject WScript.Shell
     $shortcut = $shell.CreateShortcut((Get-StartupShortcutPath))
-    $shortcut.TargetPath       = $powershell
-    $shortcut.Arguments        = $arguments
+
+    if ($useLauncher) {
+        $shortcut.TargetPath = $launcher
+        $shortcut.Arguments  = ''
+    }
+    else {
+        $shortcut.TargetPath = Join-Path $PSHOME 'powershell.exe'
+        $shortcut.Arguments  = '-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "{0}"' -f $TargetScript
+    }
+
     $shortcut.WorkingDirectory = $Global:CS.Root
     $shortcut.WindowStyle      = 7
-    $shortcut.Description      = 'Controller Starter'
-    $shortcut.Save()
+    $shortcut.Description      = 'Launches Steam when an Xbox controller connects, and closes the game and Steam when it disconnects.'
 
-    Write-Log 'Autostart enabled (Startup folder shortcut).'
+    $icon = Get-AutoStartIconPath
+    if ($icon) { $shortcut.IconLocation = "$icon,0" }
+
+    $shortcut.Save()
+    Clear-StartupShortcutDisabledMark
+
+    Write-Log $(if ($useLauncher) { 'Autostart enabled (Startup shortcut to the launcher).' }
+                else { 'Autostart enabled (Startup shortcut to PowerShell).' })
     return 'Startup'
 }
 
